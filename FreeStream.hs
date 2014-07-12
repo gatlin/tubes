@@ -12,8 +12,6 @@
  -
  - My goals were to (1) learn more about iteratees and (2) see how far I
  - could get using free monads.
- -
- - This code is licensed under the WTFPL: http://www.wtfpl.net/
  -}
 
 {-# LANGUAGE DeriveFunctor #-}
@@ -23,6 +21,19 @@
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE RankNTypes #-}
+
+module FreeStream
+
+( Stream(..)
+, ProcessT(..)
+, await
+, yield
+, run
+, liftT
+, forList
+, poll
+, lift -- re-exporting this
+) where
 
 import Prelude hiding (sequence)
 import Control.Monad.Trans.Class
@@ -54,28 +65,30 @@ data ProcessF a b where
     Await :: (a -> b) -> ProcessF a b
 
 deriving instance Functor (ProcessF a)
-type ProcessT m f a r = FreeT (ProcessF (Stream f a)) m ((Stream f r),(Stream f a))
+type ProcessT m f a r = FreeT (ProcessF (Stream f a)) m (r,(Stream f a))
 
 {- | Useful utilities -}
 
 await = liftF $ Await id
 
-yield :: (Monad m, Functor f)
-      => f b
-      -> m (Stream f b, Stream f a)
-yield x = return (Chunk x, End)
+yield x = return (x, End)
 
-run = runFreeT
+-- | A monadic tear-down function for ProcessT values
+runProcess (Pure x) = return x
+runProcess (Free (Await f)) = runFreeT (f End) >>= runProcess
+
+-- | A function for users to get values out of processes
+run p = runFreeT p >>= runProcess
 liftT = lift . runFreeT
 
 -- | Enumerate the contents of a list to a ProcessT
-forList lst s = run s >>= go lst where
-    go []     (Free (Await f)) = run (f End) >>= go []
-    go (x:xs) (Free (Await f)) = run (f (Chunk [x])) >>= go xs
+forList lst s = runFreeT s >>= go lst where
+    go []     (Free (Await f)) = runFreeT (f End) >>= go []
+    go (x:xs) (Free (Await f)) = runFreeT (f (Chunk [x])) >>= go xs
     go []     (Pure v)         = return v
     go lst    (Pure (v,_))     = return (v, Chunk lst)
 
-poll src = run src >>= go where
+poll src = runFreeT src >>= go where
     go (Pure (v,k))     = return (v, k)
-    go (Free (Await f)) = run (f End) >>= go
+    go (Free (Await f)) = runFreeT (f End) >>= go
 
