@@ -17,8 +17,8 @@
  -     ghci> feed (prodS >|< sumS) $ Chunk [1..10]
  -     (3628800,55)
  -
- -     ghci> feed (reverseS >|< insult) $ Chunk "gatlin"
- -     ("niltag","gatlin sucks")
+ -     ghci> feed (par [reverseS, insult]) $ Chunk "gatlin"
+ -     ["niltag","gatlin sucks"]
  -
  -     ghci> (v, k) <- run prompt
  -     > wild and exciting user input

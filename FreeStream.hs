@@ -37,12 +37,13 @@ module FreeStream
 , runFreeT
 , feed
 , (>|<)
+, par
 ) where
 
-import Prelude hiding (sequence)
+import Prelude hiding (sequence, mapM)
 import Control.Monad.Trans.Class
 import Control.Monad.Trans.Free
-import Control.Monad (forever)
+import Data.Traversable
 import Control.Applicative
 import Data.Monoid
 
@@ -119,3 +120,7 @@ s1 >|< s2 = do
 
 infixl >|<
 
+par ss = do
+    chunk <- await
+    rs <- mapM (\s -> lift (feed s chunk)) ss
+    yield rs
