@@ -11,8 +11,8 @@ Synopsis
 This exists mostly for my own education about 1) [iteratees][iteratees] and 2) free monads / monad transformers.
 It will probably change often and at any given moment could be brilliant, horrifying, inane, or simply wrong.
 
-From `test.hs` comments:
-
+Load `test.hs` for some sample iteratee usage. The following is extracted from
+that file's comments:
 
     ghci> feed reverseS $ Chunk "what is this"
     "siht si tahw"
@@ -31,7 +31,6 @@ From `test.hs` comments:
 
     ghci> forList v getword
     ("wild", Chunk "and exciting user input")
-
 
 [iteratees]: http://okmij.org/ftp/Streams.html
 
