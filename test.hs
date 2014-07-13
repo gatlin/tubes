@@ -77,7 +77,3 @@ insult = loop "" where
     loop acc = await >>= go acc
     go acc (Chunk c) = loop (acc ++ c)
     go acc _         = yield $ acc ++ " sucks"
-
-arith :: (Monad m, Traversable f, Num n)
-      => ProcessT m f n (n, n)
-arith = prodS >|< sumS
