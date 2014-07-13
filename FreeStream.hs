@@ -93,9 +93,12 @@ forList lst s = runFreeT s >>= go lst where
     go []     (Pure v)         = return v
     go lst    (Pure (v,_))     = return (v, Chunk lst)
 
+-- | Poll an iteratee for its most recently yielded value, or stimulate it to
+-- yield a value by passing it the End of a stream
 poll src = runFreeT src >>= go where
     go (Pure (v,k))     = return (v, k)
     go (Free (Await f)) = runFreeT (f End) >>= go
 
+-- | Feed an iteratee some piece of a stream, discarding unused input
 feed k str = runFreeT k >>= go where
     go (Free (Await f)) = run (f str) >>= return . fst

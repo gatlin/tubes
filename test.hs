@@ -1,14 +1,43 @@
+{- | A simple test file
+ -
+ - Load this up in ghci to play around with it. Note that any functor may be
+ - used as a carrier type for stream chunks.
+ -
+ - Examples:
+ -
+ -     ghci> feed reverseS $ Chunk "what is this"
+ -     "siht si tahw"
+ -
+ -     ghci> feed sumS $ Chunk [1..10]
+ -     55
+ -
+ -     ghci> feed sumS $ Chunk . Just $ 10
+ -     10
+ -
+ -     ghci> (v, k) <- run prompt
+ -     > wild and exciting user input
+ -
+ -     ghci> v
+ -     "wild and exciting user input"
+ -
+ -     ghci> forList v getword
+ -     ("wild", Chunk "and exciting user input")
+ -}
+
+import Prelude hiding (foldr, foldr', foldl, foldl', sum)
 import FreeStream
-import Control.Applicative
 import Control.Monad.Trans.Free
+import Data.Foldable
+import Data.Traversable
+import Data.Monoid
 
 type LProcessT m a b = ProcessT m [] a b
 
 -- | Read in space-delimited words and yield the words
-getword :: Monad m => LProcessT m Char String
-getword = loop "" where
+getword :: (Monad m) => LProcessT m Char String
+getword = loop mempty where
     loop acc = await >>= check acc
-    check acc (Chunk [xs]) | xs /= ' ' = loop (acc ++ [xs])
+    check acc (Chunk [xs]) | xs /= ' ' = loop (acc <> [xs])
                            | otherwise  = yield acc
     check acc _            = yield acc
 
@@ -19,22 +48,22 @@ prompt = do
     line <- lift getLine
     yield line
 
-sumS :: Monad m => LProcessT m Int Int
+sumS :: (Monad m, Traversable t) => ProcessT m t Int Int
 sumS = loop 0 where
     loop acc = await >>= go acc
-    go acc (Chunk ns) = loop (acc + (sum ns))
-    go acc _           = yield acc
+    go acc (Chunk ns) = loop (acc + (foldl (+) 0 ns))
+    go acc _          = yield acc
 
-prodS :: Monad m => LProcessT m Integer Integer
+prodS :: (Monad m, Traversable t) => ProcessT m t Integer Integer
 prodS = loop 1 where
     loop acc = await >>= go acc
-    go acc (Chunk [n]) = loop (acc * n)
+    go acc (Chunk ns) = loop (acc * (foldl (*) 1 ns))
     go acc _           = yield acc
 
 reverseS :: Monad m => LProcessT m Char String
-reverseS = loop "" where
+reverseS = loop mempty where
     loop acc = await >>= go acc
-    go acc (Chunk xs) = loop ((reverse xs)++acc)
+    go acc (Chunk xs) = loop ((reverse xs) <> acc)
     go acc _          = yield acc
 
 
