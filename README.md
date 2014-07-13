@@ -20,8 +20,14 @@ that file's comments:
     ghci> feed sumS $ Chunk [1..10]
     55
 
-    ghci> feed sumS $ Chunk . Just $ 10
+    ghci> feed prodS $ Chunk . Just $ 10
     10
+
+    ghci> feed (prodS >|< sumS) $ Chunk [1..10]
+    (3628800,55)
+
+    ghci> feed (reverseS >|< insult) $ Chunk "gatlin"
+    ("niltag","gatlin sucks")
 
     ghci> (v, k) <- run prompt
     > wild and exciting user input

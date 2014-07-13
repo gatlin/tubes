@@ -11,8 +11,14 @@
  -     ghci> feed sumS $ Chunk [1..10]
  -     55
  -
- -     ghci> feed sumS $ Chunk . Just $ 10
+ -     ghci> feed prodS $ Chunk . Just $ 10
  -     10
+ -
+ -     ghci> feed (prodS >|< sumS) $ Chunk [1..10]
+ -     (3628800,55)
+ -
+ -     ghci> feed (reverseS >|< insult) $ Chunk "gatlin"
+ -     ("niltag","gatlin sucks")
  -
  -     ghci> (v, k) <- run prompt
  -     > wild and exciting user input
@@ -48,13 +54,13 @@ prompt = do
     line <- lift getLine
     yield line
 
-sumS :: (Monad m, Traversable t) => ProcessT m t Int Int
+sumS :: (Monad m, Traversable t, Num n) => ProcessT m t n n
 sumS = loop 0 where
     loop acc = await >>= go acc
     go acc (Chunk ns) = loop (acc + (foldl (+) 0 ns))
     go acc _          = yield acc
 
-prodS :: (Monad m, Traversable t) => ProcessT m t Integer Integer
+prodS :: (Monad m, Traversable t, Num n) => ProcessT m t n n
 prodS = loop 1 where
     loop acc = await >>= go acc
     go acc (Chunk ns) = loop (acc * (foldl (*) 1 ns))
@@ -66,4 +72,12 @@ reverseS = loop mempty where
     go acc (Chunk xs) = loop ((reverse xs) <> acc)
     go acc _          = yield acc
 
+insult :: Monad m => LProcessT m Char String
+insult = loop "" where
+    loop acc = await >>= go acc
+    go acc (Chunk c) = loop (acc ++ c)
+    go acc _         = yield $ acc ++ " sucks"
 
+arith :: (Monad m, Traversable f, Num n)
+      => ProcessT m f n (n, n)
+arith = prodS >|< sumS

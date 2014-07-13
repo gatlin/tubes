@@ -36,13 +36,14 @@ module FreeStream
 , lift -- re-exporting this
 , runFreeT
 , feed
+, (>|<)
 ) where
 
 import Prelude hiding (sequence)
 import Control.Monad.Trans.Class
 import Control.Monad.Trans.Free
 import Control.Monad (forever)
-import Data.Traversable
+import Control.Applicative
 import Data.Monoid
 
 {- | A stream of data.
@@ -100,5 +101,22 @@ poll src = runFreeT src >>= go where
     go (Free (Await f)) = runFreeT (f End) >>= go
 
 -- | Feed an iteratee some piece of a stream, discarding unused input
+
+feed :: (Monad m, Functor f)
+     => ProcessT m f a b
+     -> Stream f a
+     -> m b
 feed k str = runFreeT k >>= go where
     go (Free (Await f)) = run (f str) >>= return . fst
+    go (Pure (v, k))    = return v
+
+-- | Given two iteratees, retrieve some input and apply both to it
+s1 >|< s2 = do
+    chunk <- await
+    r1 <- lift $ feed s1 chunk
+    r2 <- lift $ feed s2 chunk
+    yield (r1, r2)
+
+infixl >|<
+
+
