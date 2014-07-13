@@ -25,6 +25,7 @@
 module FreeStream
 
 ( Stream(..)
+, ProcessF(..)
 , ProcessT(..)
 , await
 , yield
@@ -33,6 +34,8 @@ module FreeStream
 , forList
 , poll
 , lift -- re-exporting this
+, runFreeT
+, feed
 ) where
 
 import Prelude hiding (sequence)
@@ -65,12 +68,14 @@ data ProcessF a b where
     Await :: (a -> b) -> ProcessF a b
 
 deriving instance Functor (ProcessF a)
-type ProcessT m f a r = FreeT (ProcessF (Stream f a)) m (r,(Stream f a))
+type ProcessT m f a b = FreeT (ProcessF (Stream f a)) m (b,(Stream f a))
 
 {- | Useful utilities -}
 
+-- | Command used by iteratees to receive an upstream value
 await = liftF $ Await id
 
+-- | Command used by iteratees to yield a value downstream
 yield x = return (x, End)
 
 -- | A monadic tear-down function for ProcessT values
@@ -92,3 +97,5 @@ poll src = runFreeT src >>= go where
     go (Pure (v,k))     = return (v, k)
     go (Free (Await f)) = runFreeT (f End) >>= go
 
+feed k str = runFreeT k >>= go where
+    go (Free (Await f)) = run (f str) >>= return . fst

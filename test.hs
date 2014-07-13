@@ -1,6 +1,6 @@
 import FreeStream
 import Control.Applicative
-import Data.Monoid
+import Control.Monad.Trans.Free
 
 type LProcessT m a b = ProcessT m [] a b
 
@@ -22,7 +22,7 @@ prompt = do
 sumS :: Monad m => LProcessT m Int Int
 sumS = loop 0 where
     loop acc = await >>= go acc
-    go acc (Chunk [n]) = loop (acc + n)
+    go acc (Chunk ns) = loop (acc + (sum ns))
     go acc _           = yield acc
 
 prodS :: Monad m => LProcessT m Integer Integer
