@@ -77,3 +77,4 @@ insult = loop "" where
     loop acc = await >>= go acc
     go acc (Chunk c) = loop (acc ++ c)
     go acc _         = yield $ acc ++ " sucks"
+

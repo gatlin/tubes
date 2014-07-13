@@ -38,6 +38,7 @@ module FreeStream
 , feed
 , (>|<)
 , par
+, agg
 ) where
 
 import Prelude hiding (sequence, mapM)
@@ -125,3 +126,10 @@ par ss = do
     chunk <- await
     rs <- mapM (\s -> lift (feed s chunk)) ss
     yield rs
+
+-- | Aggregate all input until the end of the stream
+agg :: (Monad m, Functor f, Monoid (f a)) => ProcessT m f a (f a)
+agg = loop mempty where
+    loop acc = await >>= go acc
+    go acc (Chunk xs) = loop (acc <> xs)
+    go acc _          = yield acc
