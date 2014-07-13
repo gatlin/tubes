@@ -120,6 +120,7 @@ s1 >|< s2 = do
 
 infixl >|<
 
+-- | Take any Traversable structure and map the stream over it
 par ss = do
     chunk <- await
     rs <- mapM (\s -> lift (feed s chunk)) ss
