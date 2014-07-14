@@ -20,23 +20,15 @@ that file's comments:
     ghci> feed sumS $ Chunk [1..10]
     55
 
-    ghci> feed prodS $ Chunk . Just $ 10
-    10
-
     ghci> feed (prodS >|< sumS) $ Chunk [1..10]
     (3628800,55)
 
-    ghci> feed (par [reverseS, insult]) $ Chunk "gatlin"
-    ["niltag","gatlin sucks"]
+    ghci> run $ prompt +< [ reverseS , insult ]
+    > gatlin
+    (["gatlin sucks","niltag"],End)
 
-    ghci> (v, k) <- run prompt
-    > wild and exciting user input
-
-    ghci> v
-    "wild and exciting user input"
-
-    ghci> forList v getword
-    ("wild", Chunk "and exciting user input")
+    ghci> run $ (Chunk "gatlin") $> insult +> reverseS
+    ("skcus niltag",End)
 
 [iteratees]: http://okmij.org/ftp/Streams.html
 

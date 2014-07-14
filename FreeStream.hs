@@ -31,7 +31,6 @@ module FreeStream
 , yield
 , run
 , liftT
-, forList
 , poll
 , lift -- re-exporting this
 , runFreeT
@@ -39,6 +38,9 @@ module FreeStream
 , (>|<)
 , par
 , agg
+, (+>)
+, ($>)
+, (+<)
 ) where
 
 import Prelude hiding (sequence, mapM)
@@ -79,6 +81,7 @@ type ProcessT m f a b = FreeT (ProcessF (Stream f a)) m (b,(Stream f a))
 await = liftF $ Await id
 
 -- | Command used by iteratees to yield a value downstream
+yield :: (Monad m, Functor f) => b -> m (b, Stream f a)
 yield x = return (x, End)
 
 -- | A monadic tear-down function for ProcessT values
@@ -89,12 +92,6 @@ runProcess (Free (Await f)) = runFreeT (f End) >>= runProcess
 run p = runFreeT p >>= runProcess
 liftT = lift . runFreeT
 
--- | Enumerate the contents of a list to a ProcessT
-forList lst s = runFreeT s >>= go lst where
-    go []     (Free (Await f)) = runFreeT (f End) >>= go []
-    go (x:xs) (Free (Await f)) = runFreeT (f (Chunk [x])) >>= go xs
-    go []     (Pure v)         = return v
-    go lst    (Pure (v,_))     = return (v, Chunk lst)
 
 -- | Poll an iteratee for its most recently yielded value, or stimulate it to
 -- yield a value by passing it the End of a stream
@@ -112,7 +109,22 @@ feed k str = runFreeT k >>= go where
     go (Free (Await f)) = run (f str) >>= return . fst
     go (Pure (v, k))    = return v
 
+($>) :: (Monad m, Functor f)
+     => Stream f a
+     -> ProcessT m f a b
+     -> ProcessT m f c b
+str $> k = liftT k >>= go False where
+    go repeat (Free (Await f)) | repeat    = liftT (f End) >>= go True
+                               | otherwise = liftT (f str) >>= go True
+    go repeat (Pure (v, k))    = yield v
+
+infixl $>
+
 -- | Given two iteratees, retrieve some input and apply both to it
+(>|<) :: (Monad m, Functor f)
+      => ProcessT m f a b
+      -> ProcessT m f a c
+      -> ProcessT m f a (b, c)
 s1 >|< s2 = do
     chunk <- await
     r1 <- lift $ feed s1 chunk
@@ -133,3 +145,27 @@ agg = loop mempty where
     loop acc = await >>= go acc
     go acc (Chunk xs) = loop (acc <> xs)
     go acc _          = yield acc
+
+(+>) :: (Monad m, Functor f)
+     => ProcessT m f a (f b)
+     -> ProcessT m f b (f c)
+     -> ProcessT m f d (f c)
+src +> sink = do
+    sink' <- liftT sink
+    src'  <- liftT src
+    go False src' sink'
+    where
+        go repeat (Pure (v, k)) (Free (Await f)) = case repeat of
+            True -> do
+                r <- liftT $ f End
+                go True (Pure (v, k)) r
+            _    -> do
+                r <- liftT $ f $ Chunk v
+                go True (Pure (v, k)) r
+
+        go repeat src'          (Pure (v, k)) = do
+            yield v
+
+src +< ss = src +> par ss
+
+    -- TODO need to handle the case where the source is a sink
