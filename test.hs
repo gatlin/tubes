@@ -5,21 +5,25 @@
  -
  - Examples:
  -
- -     ghci> feed reverseS $ Chunk "what is this"
+ -     ghci> poll $ Chunk "what is this" $> reverseS
  -     "siht si tahw"
  -
- -     ghci> feed sumS $ Chunk [1..10]
+ -     ghci> poll $ Chunk [1..10] $> sumS
  -     55
  -
- -     ghci> feed (prodS >|< sumS) $ Chunk [1..10]
- -     (3628800,55)
+ -     ghci> poll $ Chunk [1..10] $< [ prodS , sumS ]
+ -     [3628800,55]
  -
- -     ghci> run $ prompt +< [ reverseS , insult ]
+ -     ghci> poll $ prompt +< [ reverseS , insult ]
  -     > gatlin
- -     (["gatlin sucks","niltag"],End)
+ -     ["gatlin sucks","niltag"]
  -
- -     ghci> run $ (Chunk "gatlin") $> insult +> reverseS
+ -     ghci> poll $ Chunk "gatlin" $> insult +> reverseS
  -     ("skcus niltag",End)
+ -
+ -     ghci> poll $ prompt +< [ reverseS , insult ] +> concatS +> printS
+ -     > gatlin
+ -     "niltaggatlin sucks"
  -
  -}
 
@@ -29,16 +33,9 @@ import Control.Monad.Trans.Free
 import Data.Foldable
 import Data.Traversable
 import Data.Monoid
+import Control.Applicative (pure, Applicative)
 
 type LProcessT m a b = ProcessT m [] a b
-
--- | Read in space-delimited words and yield the words
-getword :: (Monad m) => LProcessT m Char String
-getword = loop mempty where
-    loop acc = await >>= check acc
-    check acc (Chunk [xs]) | xs /= ' ' = loop (acc <> [xs])
-                           | otherwise  = yield acc
-    check acc _            = yield acc
 
 -- | Yield input from the user.
 prompt :: LProcessT IO a String
@@ -71,3 +68,17 @@ insult = loop "" where
     go acc (Chunk c) = loop (acc ++ c)
     go acc _         = yield $ acc ++ " sucks"
 
+times2 :: (Monad m, Traversable t, Num n, Monoid (t n)) => ProcessT m t n (t n)
+times2 = loop mempty where
+    loop acc = await >>= go acc
+    go acc (Chunk ns) = loop (acc <> (fmapDefault (2 *) ns))
+    go acc _          = yield acc
+
+printS :: LProcessT IO Char String
+printS = loop mempty where
+    loop mem = await >>= go mem
+    go _ (Chunk str) = do
+        lift . putStrLn $ "Output: " ++ str
+        loop str
+
+    go mem _ = yield mem

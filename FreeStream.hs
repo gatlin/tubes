@@ -35,18 +35,20 @@ module FreeStream
 , lift -- re-exporting this
 , runFreeT
 , feed
-, (>|<)
 , par
 , agg
 , (+>)
 , ($>)
 , (+<)
+, ($<)
+, concatS
 ) where
 
 import Prelude hiding (sequence, mapM)
 import Control.Monad.Trans.Class
 import Control.Monad.Trans.Free
 import Data.Traversable
+import Data.Foldable (Foldable, fold)
 import Control.Applicative
 import Data.Monoid
 
@@ -95,8 +97,9 @@ liftT = lift . runFreeT
 
 -- | Poll an iteratee for its most recently yielded value, or stimulate it to
 -- yield a value by passing it the End of a stream
+poll :: (Monad m, Functor f) => ProcessT m f a b -> m b
 poll src = runFreeT src >>= go where
-    go (Pure (v,k))     = return (v, k)
+    go (Pure (v,k))     = return v
     go (Free (Await f)) = runFreeT (f End) >>= go
 
 -- | Feed an iteratee some piece of a stream, discarding unused input
@@ -120,19 +123,6 @@ str $> k = liftT k >>= go False where
 
 infixl $>
 
--- | Given two iteratees, retrieve some input and apply both to it
-(>|<) :: (Monad m, Functor f)
-      => ProcessT m f a b
-      -> ProcessT m f a c
-      -> ProcessT m f a (b, c)
-s1 >|< s2 = do
-    chunk <- await
-    r1 <- lift $ feed s1 chunk
-    r2 <- lift $ feed s2 chunk
-    yield (r1, r2)
-
-infixl >|<
-
 -- | Take any Traversable structure and map the stream over it
 par ss = do
     chunk <- await
@@ -146,6 +136,13 @@ agg = loop mempty where
     go acc (Chunk xs) = loop (acc <> xs)
     go acc _          = yield acc
 
+concatS :: (Monad m, Traversable f, Functor f, Monoid a, Monoid (f a))
+        => ProcessT m f a a
+concatS = loop mempty where
+    loop acc = await >>= go acc
+    go acc (Chunk xs) = loop (acc <> xs)
+    go acc _          = yield $ fold acc
+
 (+>) :: (Monad m, Functor f)
      => ProcessT m f a (f b)
      -> ProcessT m f b (f c)
@@ -155,6 +152,13 @@ src +> sink = do
     src'  <- liftT src
     go False src' sink'
     where
+    {-
+        go repeat (Free (Await f)) sink' = do
+            v <- await
+            r <- liftT $ f v
+            go repeat r sink'
+    -}
+
         go repeat (Pure (v, k)) (Free (Await f)) = case repeat of
             True -> do
                 r <- liftT $ f End
@@ -166,6 +170,8 @@ src +> sink = do
         go repeat src'          (Pure (v, k)) = do
             yield v
 
+-- | Map a source's output to a functor of sinks
 src +< ss = src +> par ss
 
-    -- TODO need to handle the case where the source is a sink
+-- | Map a raw stream value to a functor of sinks
+strm $< ss = strm $> agg +< ss
