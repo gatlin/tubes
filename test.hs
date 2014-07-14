@@ -16,7 +16,7 @@
  -
  -     ghci> poll $ prompt +< [ reverseS , insult ]
  -     > gatlin
- -     ["gatlin sucks","niltag"]
+ -     ["niltag","gatlin sucks"]
  -
  -     ghci> poll $ Chunk "gatlin" $> insult +> reverseS
  -     ("skcus niltag",End)
