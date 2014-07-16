@@ -21,6 +21,8 @@
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE NoMonomorphismRestriction #-}
 
 module FreeStream
 
@@ -29,19 +31,11 @@ module FreeStream
 , ProcessT(..)
 , await
 , yield
-, run
-, liftT
-, poll
-, lift -- re-exporting this
-, runFreeT
+, lift -- re-exported from Control.Monad.Trans.Free
 , feed
-, par
-, agg
 , (+>)
-, ($>)
-, (+<)
-, ($<)
-, concatS
+, poll
+, sequence -- re-exported from Data.Traversable
 ) where
 
 import Prelude hiding (sequence, mapM)
@@ -52,15 +46,9 @@ import Data.Foldable (Foldable, fold)
 import Control.Applicative
 import Data.Monoid
 
-{- | A stream of data.
- -
- - A chunk of data wrapped in some functor, or the End of the stream.
- -}
 data Stream f a where
-    End   :: forall a f. Functor f => Stream f a
-    Chunk :: forall a f. Functor f => f a -> Stream f a
-
-deriving instance Show (f a) => Show (Stream f a)
+    End   :: (Traversable f, Monoid (f a)) => Stream f a
+    Chunk :: forall a f. (Traversable f, Monoid (f a)) => f a -> Stream f a
 
 {- | Process
  -
@@ -71,107 +59,63 @@ deriving instance Show (f a) => Show (Stream f a)
  - Processes are monad transformers, meaning you can construct processes which
  - fold effectful computations over streams of data.
  -}
-data ProcessF a b where
-    Await :: (a -> b) -> ProcessF a b
+data ProcessF a b k where
+    Await :: (a -> k) -> ProcessF a b k
+    Yield :: (b, k)   -> ProcessF a b k
 
-deriving instance Functor (ProcessF a)
-type ProcessT m f a b = FreeT (ProcessF (Stream f a)) m (b,(Stream f a))
+deriving instance Functor (ProcessF a b)
+type ProcessT a b m r = FreeT (ProcessF a b) m r
 
 {- | Useful utilities -}
 
 -- | Command used by iteratees to receive an upstream value
+await :: (Monad m) => ProcessT a b m a
 await = liftF $ Await id
 
 -- | Command used by iteratees to yield a value downstream
-yield :: (Monad m, Functor f) => b -> m (b, Stream f a)
-yield x = return (x, End)
+yield x = liftF $ Yield (x,())
 
--- | A monadic tear-down function for ProcessT values
-runProcess (Pure x) = return x
-runProcess (Free (Await f)) = runFreeT (f End) >>= runProcess
-
--- | A function for users to get values out of processes
-run p = runFreeT p >>= runProcess
 liftT = lift . runFreeT
 
+feed value sink = runFreeT sink >>= go False where
+    go doneOnce (Free (Await f)) | doneOnce  = runFreeT (f End) >>= go True
+                                 | otherwise = runFreeT (f (Chunk value)) >>= go True
+    go _        (Free (Yield (v,k))) = return (v, k)
 
--- | Poll an iteratee for its most recently yielded value, or stimulate it to
--- yield a value by passing it the End of a stream
-poll :: (Monad m, Functor f) => ProcessT m f a b -> m b
+poll :: (Monad m, Traversable f, Monoid (f a))
+     => ProcessT (Stream f a) b m r
+     -> m (b, ProcessT (Stream f a) b m r)
 poll src = runFreeT src >>= go where
-    go (Pure (v,k))     = return v
     go (Free (Await f)) = runFreeT (f End) >>= go
+    go (Free (Yield (v, k))) = return (v, k)
 
--- | Feed an iteratee some piece of a stream, discarding unused input
-
-feed :: (Monad m, Functor f)
-     => ProcessT m f a b
-     -> Stream f a
-     -> m b
-feed k str = runFreeT k >>= go where
-    go (Free (Await f)) = run (f str) >>= return . fst
-    go (Pure (v, k))    = return v
-
-($>) :: (Monad m, Functor f)
-     => Stream f a
-     -> ProcessT m f a b
-     -> ProcessT m f c b
-str $> k = liftT k >>= go False where
-    go repeat (Free (Await f)) | repeat    = liftT (f End) >>= go True
-                               | otherwise = liftT (f str) >>= go True
-    go repeat (Pure (v, k))    = yield v
-
-infixl $>
-
--- | Take any Traversable structure and map the stream over it
-par ss = do
-    chunk <- await
-    rs <- mapM (\s -> lift (feed s chunk)) ss
-    yield rs
-
--- | Aggregate all input until the end of the stream
-agg :: (Monad m, Functor f, Monoid (f a)) => ProcessT m f a (f a)
-agg = loop mempty where
-    loop acc = await >>= go acc
-    go acc (Chunk xs) = loop (acc <> xs)
-    go acc _          = yield acc
-
-concatS :: (Monad m, Traversable f, Functor f, Monoid a, Monoid (f a))
-        => ProcessT m f a a
-concatS = loop mempty where
-    loop acc = await >>= go acc
-    go acc (Chunk xs) = loop (acc <> xs)
-    go acc _          = yield $ fold acc
-
-(+>) :: (Monad m, Functor f)
-     => ProcessT m f a (f b)
-     -> ProcessT m f b (f c)
-     -> ProcessT m f d (f c)
+-- | Construct pull-based stream pipelines
+(+>) :: (Monad m, Traversable f, Monoid (f b))
+     => ProcessT a            (f b) m r1
+     -> ProcessT (Stream f b) c     m r2
+     -> ProcessT a            c     m r2
 src +> sink = do
-    sink' <- liftT sink
     src'  <- liftT src
-    go False src' sink'
+    sink' <- liftT sink
+    go src' sink'
     where
-    {-
-        go repeat (Free (Await f)) sink' = do
-            v <- await
-            r <- liftT $ f v
-            go repeat r sink'
-    -}
-
-        go repeat (Pure (v, k)) (Free (Await f)) = case repeat of
-            True -> do
-                r <- liftT $ f End
-                go True (Pure (v, k)) r
-            _    -> do
-                r <- liftT $ f $ Chunk v
-                go True (Pure (v, k)) r
-
-        go repeat src'          (Pure (v, k)) = do
+        go src' (Free (Yield (v, k))) = do
             yield v
+            liftT k >>= go src'
 
--- | Map a source's output to a functor of sinks
-src +< ss = src +> par ss
+        go (Free (Await f)) sink' = do
+            value <- await
+            r     <- liftT $ f value
+            go r sink'
 
--- | Map a raw stream value to a functor of sinks
-strm $< ss = strm $> agg +< ss
+        go (Free (Yield (v, k))) (Free (Await f)) = do
+            r <- liftT $ f $ Chunk v
+            k' <- liftT k
+            go k' r
+
+        go (Pure k) (Free (Await f)) = do
+            r <- liftT $ f End
+            go (Pure k) r
+
+        go _        (Pure v) = do
+            return v
