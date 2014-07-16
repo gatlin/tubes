@@ -3,27 +3,21 @@
  - Load this up in ghci to play around with it. Note that any functor may be
  - used as a carrier type for stream chunks.
  -
- - Examples WHICH DON'T APPLY SINCE I CHANGED EVERYTHING IN THIS BRANCH:
+ - Examples:
  -
- -     ghci> poll $ Chunk "what is this" $> reverseS
+ -     ghci> (v, k) <- poll $ "what is this" $> reverseS +> printS
+ -     Output: siht si tahw
+ -     ghci> v
  -     "siht si tahw"
  -
- -     ghci> poll $ Chunk [1..10] $> sumS
- -     55
- -
- -     ghci> poll $ Chunk [1..10] $< [ prodS , sumS ]
- -     [3628800,55]
- -
- -     ghci> poll $ prompt +< [ reverseS , insult ]
+ -     ghci> (v, k) <- poll $ prompt +< [ reverseS , insult ]
  -     > gatlin
+ -     ghci> v
  -     ["niltag","gatlin sucks"]
  -
- -     ghci> poll $ Chunk "gatlin" $> insult +> reverseS
- -     ("skcus niltag",End)
- -
- -     ghci> poll $ prompt +< [ reverseS , insult ] +> concatS +> printS
- -     > gatlin
- -     "niltaggatlin sucks"
+ -     ghci> (v, k) <- poll $ [1..10] $> sumS
+ -     ghci> v
+ -     55
  -
  -}
 
@@ -82,10 +76,11 @@ reverseS = loop "" where
     go mem (Chunk xs) = yield (reverse xs) >> loop (reverse xs)
     go mem _          = yield mem
 
-insult = loop where
-    loop = await >>= go
-    go (Chunk xs) = yield (xs ++ " sucks") >> loop
-    go _          = return ""
+insult = loop "" where
+    loop mem = await >>= go mem
+    go mem (Chunk xs) = yield insulted >> loop insulted
+        where insulted = xs ++ " sucks"
+    go mem _     = yield mem
 
 huh = reverseS +> reverseS
 

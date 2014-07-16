@@ -14,25 +14,19 @@ It will probably change often and at any given moment could be brilliant, horrif
 Load `test.hs` for some sample iteratee usage. The following is extracted from
 that file's comments:
 
-    ghci> poll $ Chunk "what is this" $> reverseS
+    ghci> (v, k) <- poll $ "what is this" $> reverseS +> printS
+    Output: siht si tahw
+    ghci> v
     "siht si tahw"
 
-    ghci> poll $ Chunk [1..10] $> sumS
-    55
-
-    ghci> poll $ Chunk [1..10] $< [ prodS , sumS ]
-    [3628800,55]
-
-    ghci> poll $ prompt +< [ reverseS , insult ]
+    ghci> (v, k) <- poll $ prompt +< [ reverseS , insult ]
     > gatlin
+    ghci> v
     ["niltag","gatlin sucks"]
 
-    ghci> poll $ Chunk "gatlin" $> insult +> reverseS
-    ("skcus niltag",End)
-
-    ghci> poll $ prompt +< [ reverseS , insult ] +> concatS +> printS
-    > gatlin
-    "niltaggatlin sucks"
+    ghci> (v, k) <- poll $ [1..10] $> sumS
+    ghci> v
+    55
 
 [iteratees]: http://okmij.org/ftp/Streams.html
 

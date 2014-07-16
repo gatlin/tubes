@@ -36,6 +36,10 @@ module FreeStream
 , (+>)
 , poll
 , sequence -- re-exported from Data.Traversable
+, parPull
+, (+<)
+, ($>)
+, ($<)
 ) where
 
 import Prelude hiding (sequence, mapM)
@@ -77,16 +81,7 @@ yield x = liftF $ Yield (x,())
 
 liftT = lift . runFreeT
 
-feed value sink = runFreeT sink >>= go False where
-    go doneOnce (Free (Await f)) | doneOnce  = runFreeT (f End) >>= go True
-                                 | otherwise = runFreeT (f (Chunk value)) >>= go True
-    go _        (Free (Yield (v,k))) = return (v, k)
-
-poll :: (Monad m, Traversable f, Monoid (f a))
-     => ProcessT (Stream f a) b m r
-     -> m (b, ProcessT (Stream f a) b m r)
 poll src = runFreeT src >>= go where
-    go (Free (Await f)) = runFreeT (f End) >>= go
     go (Free (Yield (v, k))) = return (v, k)
 
 -- | Construct pull-based stream pipelines
@@ -119,3 +114,24 @@ src +> sink = do
 
         go _        (Pure v) = do
             return v
+
+-- | Feed a process a piece of stream and return the output.
+feed k str = runFreeT k >>= go where
+    go (Free (Await f)) = runFreeT (f str) >>= go
+    go (Free (Yield (v, k))) = return v
+
+-- | Map the stream over any Traversable of process sinks (pull-based)
+parPull ss = do
+    chunk <- await
+    rs <- mapM (\s -> lift (feed s chunk)) ss
+    yield rs
+
+-- | Convenience function for connecting a source to a Traversable of sinks in
+-- a pull-based stream.
+src +< ss = src +> (parPull ss)
+
+-- | Construct a simple pull-based source out of raw stream data
+d $> sink = (yield d) +> sink
+
+-- | Analogous to +<
+d $< sinkF = (yield d) +< sinkF
