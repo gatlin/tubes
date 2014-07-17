@@ -34,10 +34,10 @@ module FreeStream
 , lift -- re-exported from Control.Monad.Trans.Free
 , feed
 , (+>)
-, poll
+, run
 , sequence -- re-exported from Data.Traversable
 , parPull
-, (+<)
+, (*<)
 , ($>)
 , ($<)
 ) where
@@ -47,7 +47,6 @@ import Control.Monad.Trans.Class
 import Control.Monad.Trans.Free
 import Data.Traversable
 import Data.Foldable (Foldable, fold)
-import Control.Applicative
 import Data.Monoid
 
 data Stream f a where
@@ -77,11 +76,12 @@ await :: (Monad m) => ProcessT a b m a
 await = liftF $ Await id
 
 -- | Command used by iteratees to yield a value downstream
+yield :: Monad m => b -> ProcessT a b m ()
 yield x = liftF $ Yield (x,())
 
 liftT = lift . runFreeT
 
-poll src = runFreeT src >>= go where
+run src = runFreeT src >>= go where
     go (Free (Yield (v, k))) = return (v, k)
 
 -- | Construct pull-based stream pipelines
@@ -128,10 +128,10 @@ parPull ss = do
 
 -- | Convenience function for connecting a source to a Traversable of sinks in
 -- a pull-based stream.
-src +< ss = src +> (parPull ss)
+src *< ss = src +> (parPull ss)
 
 -- | Construct a simple pull-based source out of raw stream data
 d $> sink = (yield d) +> sink
 
 -- | Analogous to +<
-d $< sinkF = (yield d) +< sinkF
+d $< sinkF = (yield d) *< sinkF

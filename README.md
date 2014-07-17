@@ -14,19 +14,23 @@ It will probably change often and at any given moment could be brilliant, horrif
 Load `test.hs` for some sample iteratee usage. The following is extracted from
 that file's comments:
 
-    ghci> (v, k) <- poll $ "what is this" $> reverseS +> printS
-    Output: siht si tahw
+    ghci> (v, k) <- run $ "what is this" $> reverseS +> printS
+    Printing: siht si tahw
     ghci> v
     "siht si tahw"
 
-    ghci> (v, k) <- poll $ prompt +< [ reverseS , insult ]
+    ghci> (v, k) <- run $ prompt *< [ reverseS , insult ]
     > gatlin
     ghci> v
     ["niltag","gatlin sucks"]
 
-    ghci> (v, k) <- poll $ [1..10] $> sumS
+    ghci> (v, k) <- run $ [1..10] $> sumS
     ghci> v
     55
+
+    ghci> (v, k) <- run $ "no more spaces" $> (filterSpaces reverseS)
+    ghci> v
+    "secapseromon"
 
 [iteratees]: http://okmij.org/ftp/Streams.html
 

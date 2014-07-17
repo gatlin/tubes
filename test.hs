@@ -5,19 +5,23 @@
  -
  - Examples:
  -
- -     ghci> (v, k) <- poll $ "what is this" $> reverseS +> printS
- -     Output: siht si tahw
+ -     ghci> (v, k) <- run $ "what is this" $> reverseS +> printS
+ -     Printing: siht si tahw
  -     ghci> v
  -     "siht si tahw"
  -
- -     ghci> (v, k) <- poll $ prompt +< [ reverseS , insult ]
+ -     ghci> (v, k) <- run $ prompt *< [ reverseS , insult ]
  -     > gatlin
  -     ghci> v
  -     ["niltag","gatlin sucks"]
  -
- -     ghci> (v, k) <- poll $ [1..10] $> sumS
+ -     ghci> (v, k) <- run $ [1..10] $> sumS
  -     ghci> v
  -     55
+ -
+ -     ghci> (v, k) <- run $ "no more spaces" $> (filterSpaces reverseS)
+ -     ghci> v
+ -     "secapseromon"
  -
  -}
 
@@ -25,19 +29,24 @@
 
 import Prelude hiding (foldr, foldr', foldl, foldl', sum, sequence)
 import FreeStream
-import Control.Monad.Trans.Free
 import Control.Monad (forever)
 import Data.Foldable
 import Data.Traversable
-import Data.Monoid
-import Control.Applicative (pure, Applicative)
 
 prompt = do
     lift . putStr $ "> "
     line <- lift getLine
     yield line
+    return ()
 
 promptMany = forever prompt
+
+printS = loop where
+    loop = await >>= go
+    go (Chunk xs) = do
+        lift . putStrLn $ "Printing: " ++ xs
+        yield xs
+    go _          = return ()
 
 sumS = loop 0 where
     loop acc = await >>= go acc
@@ -52,15 +61,6 @@ getword = loop "" where
                        | otherwise = yield acc >> loop ""
     go acc (End)     = yield acc
 
-printS = loop where
-    loop = await >>= go
-    go (Chunk xs) = do
-        lift . putStrLn $ "Output: " ++ xs
-        yield xs
-        loop
-    go _          = do
-        loop
-
 enumList [] = yield []
 enumList (x:xs) = do
     yield [x]
@@ -70,7 +70,6 @@ explode = await >>= go where
     go (Chunk xs) = enumList xs
     go _          = yield []
 
-reverseS :: ProcessT (Stream [] Char) String IO ()
 reverseS = loop "" where
     loop mem = await >>= go mem
     go mem (Chunk xs) = yield (reverse xs) >> loop (reverse xs)
@@ -82,6 +81,22 @@ insult = loop "" where
         where insulted = xs ++ " sucks"
     go mem _     = yield mem
 
-huh = reverseS +> reverseS
+aggList = loop [] where
+    loop acc = await >>= go acc
+    go acc (Chunk xs) = loop (acc ++ [xs])
+    go acc _          = yield acc
 
-xs = [ reverseS , huh ]
+exclude target = forever $ do
+    d <- await
+    go d
+    where go (Chunk xs) = yield $ filter (target /=) xs
+          go _          = return ()
+
+filterSpaces k = loop where
+    loop = await >>= go
+    go (Chunk xs) = do
+        ys <- lift $ feed (k +> exclude ' ') $ Chunk xs
+        yield ys >> loop
+    go _          = return ()
+
+filterInsult = filterSpaces insult
