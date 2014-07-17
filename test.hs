@@ -5,21 +5,21 @@
  -
  - Examples:
  -
- -     ghci> (v, k) <- run $ "what is this" $> reverseS +> printS
+ -     ghci> Just (v, k) <- run $ "what is this" $> reverseS +> printS
  -     Printing: siht si tahw
  -     ghci> v
  -     "siht si tahw"
  -
- -     ghci> (v, k) <- run $ prompt *< [ reverseS , insult ]
+ -     ghci> Just (v, k) <- run $ prompt *< [ reverseS , insult ]
  -     > gatlin
  -     ghci> v
  -     ["niltag","gatlin sucks"]
  -
- -     ghci> (v, k) <- run $ [1..10] $> sumS
+ -     ghci> Just (v, k) <- run $ [1..10] $> sumS
  -     ghci> v
  -     55
  -
- -     ghci> (v, k) <- run $ "no more spaces" $> (filterSpaces reverseS)
+ -     ghci> Just (v, k) <- run $ "no more spaces" $> (filterSpaces reverseS)
  -     ghci> v
  -     "secapseromon"
  -
@@ -27,19 +27,21 @@
 
 {-# LANGUAGE NoMonomorphismRestriction #-}
 
-import Prelude hiding (foldr, foldr', foldl, foldl', sum, sequence)
+import Prelude hiding (foldr, foldr', foldl, foldl', sum, product, sequence)
 import FreeStream
-import Control.Monad (forever)
+import Control.Monad (forever, unless)
+import Control.Monad.Trans.Free
 import Data.Foldable
 import Data.Traversable
+import System.IO (isEOF)
 
 prompt = do
     lift . putStr $ "> "
-    line <- lift getLine
-    yield line
-    return ()
-
-promptMany = forever prompt
+    eof <- lift isEOF
+    unless eof $ do
+        str <- lift getLine
+        yield str
+        prompt
 
 printS = loop where
     loop = await >>= go
@@ -50,8 +52,14 @@ printS = loop where
 
 sumS = loop 0 where
     loop acc = await >>= go acc
-    go acc (Chunk []) = yield acc >> loop 0
+    go acc (Chunk []) = yield acc
     go acc (Chunk ns) = loop $ acc + (sum ns)
+    go acc _          = yield acc
+
+prodS = loop 1 where
+    loop acc = await >>= go acc
+    go acc (Chunk []) = yield acc >> loop 1
+    go acc (Chunk ns) = loop $ acc * (product ns)
     go acc _          = yield acc
 
 getword = loop "" where
@@ -75,15 +83,14 @@ reverseS = loop "" where
     go mem (Chunk xs) = yield (reverse xs) >> loop (reverse xs)
     go mem _          = yield mem
 
-insult = loop "" where
-    loop mem = await >>= go mem
-    go mem (Chunk xs) = yield insulted >> loop insulted
-        where insulted = xs ++ " sucks"
-    go mem _     = yield mem
+insult = loop where
+    loop = await >>= go
+    go (Chunk xs) = yield ( xs ++ " sucks" ) >> loop
+    go _     = return ()
 
 aggList = loop [] where
     loop acc = await >>= go acc
-    go acc (Chunk xs) = loop (acc ++ [xs])
+    go acc (Chunk xs) = loop (acc ++ xs)
     go acc _          = yield acc
 
 exclude target = forever $ do

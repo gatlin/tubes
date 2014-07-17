@@ -32,6 +32,8 @@ module FreeStream
 , await
 , yield
 , lift -- re-exported from Control.Monad.Trans.Free
+, Free -- re-exported from Control.Monad.Trans.Free
+, runFreeT -- re-exported from Control.Monad.Trans.Free
 , feed
 , (+>)
 , run
@@ -82,43 +84,37 @@ yield x = liftF $ Yield (x,())
 liftT = lift . runFreeT
 
 run src = runFreeT src >>= go where
-    go (Free (Yield (v, k))) = return (v, k)
+    go (Free (Yield (v, k))) = return $ Just (v, k)
+    go (Free (Await f))      = return Nothing
+    go (Pure x)              = return Nothing
 
 -- | Construct pull-based stream pipelines
-(+>) :: (Monad m, Traversable f, Monoid (f b))
-     => ProcessT a            (f b) m r1
-     -> ProcessT (Stream f b) c     m r2
-     -> ProcessT a            c     m r2
 src +> sink = do
-    src'  <- liftT src
     sink' <- liftT sink
-    go src' sink'
+    go src sink'
     where
-        go src' (Free (Yield (v, k))) = do
+        go src (Free (Await f)) = do
+            input <- lift $ run src
+            case input of
+                Just (v, k) -> do
+                    r <- liftT $ f $ Chunk v
+                    go k r
+                Nothing -> do
+                    r <- liftT $ f End
+                    go src r
+
+        go src (Free (Yield (v, k))) = do
             yield v
-            liftT k >>= go src'
-
-        go (Free (Await f)) sink' = do
-            value <- await
-            r     <- liftT $ f value
-            go r sink'
-
-        go (Free (Yield (v, k))) (Free (Await f)) = do
-            r <- liftT $ f $ Chunk v
             k' <- liftT k
-            go k' r
+            go src k'
 
-        go (Pure k) (Free (Await f)) = do
-            r <- liftT $ f End
-            go (Pure k) r
-
-        go _        (Pure v) = do
-            return v
+        go _ (Pure x) = return x
 
 -- | Feed a process a piece of stream and return the output.
-feed k str = runFreeT k >>= go where
-    go (Free (Await f)) = runFreeT (f str) >>= go
-    go (Free (Yield (v, k))) = return v
+feed k str = runFreeT k >>= go False where
+    go secondLoop (Free (Await f)) | secondLoop = runFreeT (f End) >>= go True
+                                   | otherwise  = runFreeT (f str) >>= go True
+    go secondLoop (Free (Yield (v, k))) = return v
 
 -- | Map the stream over any Traversable of process sinks (pull-based)
 parPull ss = do
