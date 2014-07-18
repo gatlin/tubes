@@ -57,7 +57,7 @@ library
   -- other-modules:       
   
   -- LANGUAGE extensions used by modules in this package.
-  other-extensions:    DeriveFunctor, StandaloneDeriving, NoMonomorphismRestriction
+  other-extensions:    DeriveFunctor, StandaloneDeriving, NoMonomorphismRestriction, RankNTypes
   
   -- Other library packages from which modules are imported.
   build-depends:       base >=4.6 && <4.7, transformers >=0.3 && <0.4, free >=4.9 && <4.10

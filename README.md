@@ -50,7 +50,7 @@ Load `test.hs` for some sample iteratee usage. The following is inspired by a
     four
     threefour
 
-    ghci> run $ prompt +> takeS 3 +> print
+    ghci> run $ prompt +> take 3 +> print
     > one
     one
     > two

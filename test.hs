@@ -1,7 +1,5 @@
 -- | Load this up in ghci to play around
 
-{-# LANGUAGE NoMonomorphismRestriction #-}
-
 import Prelude hiding ( drop
                       , take
                       , takeWhile
@@ -16,6 +14,7 @@ import System.IO (isEOF)
 import Control.Exception (try, throwIO)
 import qualified GHC.IO.Exception as G
 
+prompt :: Generator String IO ()
 prompt = do
     lift . putStr $ "> "
     eof <- lift isEOF
@@ -24,6 +23,7 @@ prompt = do
         yield str
         prompt
 
+print :: Sink String IO ()
 print = do
     str <- await
     x   <- lift $ try $ putStrLn str
@@ -32,6 +32,7 @@ print = do
             lift $ unless (t == G.ResourceVanished) $ throwIO e
         Right () -> print
 
+doubleUp :: Sink String IO String
 doubleUp = do
     str1 <- await
     str2 <- await
