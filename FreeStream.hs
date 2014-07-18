@@ -17,43 +17,38 @@
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE NoMonomorphismRestriction #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE BangPatterns #-}
-{-# LANGUAGE GADTs #-}
-{-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE UndecidableInstances #-}
-{-# LANGUAGE NoMonomorphismRestriction #-}
 
 module FreeStream
 
-( Stream(..)
-, ProcessF(..)
-, ProcessT(..)
-, await
-, yield
+( ProcessF(..)
+, Process(..)
+-- * Re-exports
 , lift -- re-exported from Control.Monad.Trans.Free
 , Free -- re-exported from Control.Monad.Trans.Free
 , runFreeT -- re-exported from Control.Monad.Trans.Free
-, feed
+-- * Core infrastructure
+, await
+, yield
+, each
+, FreeStream.for
+, (~>)
+, (>~)
 , (+>)
 , run
-, sequence -- re-exported from Data.Traversable
-, parPull
-, (*<)
-, ($>)
-, ($<)
+, liftT
+-- * Utilities
+, cat
+, FreeStream.map
+, FreeStream.drop
+, FreeStream.take
+, FreeStream.takeWhile
+, FreeStream.filter
 ) where
 
-import Prelude hiding (sequence, mapM)
 import Control.Monad.Trans.Class
 import Control.Monad.Trans.Free
-import Data.Traversable
-import Data.Foldable (Foldable, fold)
 import Data.Monoid
-
-data Stream f a where
-    End   :: (Traversable f, Monoid (f a)) => Stream f a
-    Chunk :: forall a f. (Traversable f, Monoid (f a)) => f a -> Stream f a
+import Control.Monad (forever, unless, replicateM_, when)
 
 {- | Process
  -
@@ -64,70 +59,125 @@ data Stream f a where
  - Processes are monad transformers, meaning you can construct processes which
  - fold effectful computations over streams of data.
  -}
-data ProcessF a b k where
-    Await :: (a -> k) -> ProcessF a b k
-    Yield :: (b, k)   -> ProcessF a b k
+data ProcessF a b k
+    = Await (a -> k)
+    | Yield (b, k)
 
 deriving instance Functor (ProcessF a b)
-type ProcessT a b m r = FreeT (ProcessF a b) m r
+type Process a b m r = FreeT (ProcessF a b) m r
 
-{- | Useful utilities -}
+run = runFreeT
+
+{- | Basic Process infrastructure -}
 
 -- | Command used by iteratees to receive an upstream value
-await :: (Monad m) => ProcessT a b m a
+await :: (Monad m) => Process a b m a
 await = liftF $ Await id
 
 -- | Command used by iteratees to yield a value downstream
-yield :: Monad m => b -> ProcessT a b m ()
+yield :: Monad m => b -> Process a b m ()
 yield x = liftF $ Yield (x,())
 
 liftT = lift . runFreeT
 
-run src = runFreeT src >>= go where
-    go (Free (Yield (v, k))) = return $ Just (v, k)
-    go (Free (Await f))      = return Nothing
-    go (Pure x)              = return Nothing
+-- | Convert a list to GeneratorT
+each :: Monad m => [b] -> Process a b m ()
+each as = mapM_ yield as
 
--- | Construct pull-based stream pipelines
-src +> sink = do
-    sink' <- liftT sink
-    go src sink'
+-- | Loop over the data from a generator, performing some action on each datum
+for :: Monad m => Process a b m r -> (b -> Process a y m c) -> Process a y m r
+for src body = liftT src >>= go where
+    go (Free (Yield (v, k))) = do
+        body v
+        liftT k >>= go
+
+    go (Free (Await f)) = do
+        v <- await
+        liftT (f v) >>= go
+
+    go (Pure x) = return x
+
+-- | Feed a monadic function into a sink
+(~>) :: Monad m => Process x y m a -> Process a b m r -> m r
+d ~> sink = runFreeT sink >>= go where
+    go (Free (Await f)) = do
+        Pure d' <- runFreeT d
+        r  <- runFreeT $ f d'
+        go r
+
+    go (Pure x) = return x
+
+-- | Compose sinks
+(>~) :: Monad m
+     => Process a b m d
+     -> Process d e m r
+     -> Process a g m r
+s1 >~ s2 = liftT s2 >>= go where
+    go (Free (Await f)) = do
+        Pure d' <- liftT s1
+        r <- liftT $ f d'
+        go r
+
+    go (Pure x) = return x
+
+-- | Connect two processes into a new pull-based process
+(+>) :: Monad m
+     => Process a b m r
+     -> Process b c m r
+     -> Process d c m r
+src +> sink = liftT sink >>= go src where
+    go src (Free (Await f)) = do
+        input <- liftT src
+        case input of
+            Pure x -> return x
+
+            Free (Yield (v, k)) -> do
+                output <- liftT $ f v
+                go k output
+
+    go src (Free (Yield (v, k))) = do
+        yield v
+        liftT k >>= go src
+
+    go _ (Pure x)   = return x
+
+{- | Useful utilities -}
+
+-- | Continuously relays any values it receives. Iteratee identity.
+cat :: Monad m => Process a a m r
+cat = forever $ do
+    x <- await
+    yield x
+
+-- | Transforms all incoming values according to some function.
+map :: (Monad m) => (a -> b) -> Process a b m r
+map f = for cat $ \x -> yield (f x)
+
+-- | Refuses to yield the first `n` values it receives.
+drop :: Monad m => Int -> Process a a m r
+drop n = do
+    replicateM_ n await
+    cat
+
+-- | Yields only values satisfying some predicate.
+filter :: Monad m => (a -> Bool) -> Process a a m r
+filter pred = for cat $ \x -> when (pred x) (yield x)
+
+-- | Terminates the stream upon receiving a value matching the predicate
+takeWhile :: Monad m => (a -> Bool) -> Process a a m ()
+takeWhile pred = go
     where
-        go src (Free (Await f)) = do
-            input <- lift $ run src
-            case input of
-                Just (v, k) -> do
-                    r <- liftT $ f $ Chunk v
-                    go k r
-                Nothing -> do
-                    r <- liftT $ f End
-                    go src r
+        go = do
+            a <- await
+            if (pred a)
+                then do
+                    yield a
+                    go
+            else return ()
 
-        go src (Free (Yield (v, k))) = do
-            yield v
-            k' <- liftT k
-            go src k'
-
-        go _ (Pure x) = return x
-
--- | Feed a process a piece of stream and return the output.
-feed k str = runFreeT k >>= go False where
-    go secondLoop (Free (Await f)) | secondLoop = runFreeT (f End) >>= go True
-                                   | otherwise  = runFreeT (f str) >>= go True
-    go secondLoop (Free (Yield (v, k))) = return v
-
--- | Map the stream over any Traversable of process sinks (pull-based)
-parPull ss = do
-    chunk <- await
-    rs <- mapM (\s -> lift (feed s chunk)) ss
-    yield rs
-
--- | Convenience function for connecting a source to a Traversable of sinks in
--- a pull-based stream.
-src *< ss = src +> (parPull ss)
-
--- | Construct a simple pull-based source out of raw stream data
-d $> sink = (yield d) +> sink
-
--- | Analogous to +<
-d $< sinkF = (yield d) *< sinkF
+-- | Relay only the first `n` elements of a stream.
+take :: Monad m => Int -> Process a a m ()
+take n = do
+    replicateM_ n $ do
+        x <- await
+        yield x
