@@ -30,6 +30,15 @@ Load `test.hs` for some sample iteratee usage. The following is inspired by a
     8
     9
 
+    ghci> run $ prompt |- (/= "Die Antwoord") +> map (++ " sucks") +> print
+    > dubstep
+    dubstep sucks
+    > normal music
+    normal music sucks
+    > Die Antwoord
+    > rock
+    rock sucks
+
     ghci> run $ for prompt $ \str -> lift . putStrLn $ "Printing: " ++ str
     > one
     Printing: one
@@ -64,15 +73,6 @@ Load `test.hs` for some sample iteratee usage. The following is inspired by a
     first
     > second
     second
-
-    ghci> run $ prompt +> filter (/= "Die Antwoord") +> map (++ " sucks") +> print
-    > dubstep
-    dubstep sucks
-    > normal music
-    normal music sucks
-    > Die Antwoord
-    > rock
-    rock sucks
 
 [iteratees]: http://okmij.org/ftp/Streams.html
 [pipes]: https://www.fpcomplete.com/school/to-infinity-and-beyond/pick-of-the-week/Pipes%20tutorial
