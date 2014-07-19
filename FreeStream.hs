@@ -15,10 +15,13 @@
  -}
 
 {-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE DeriveFoldable #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE NoMonomorphismRestriction #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ExistentialQuantification #-}
+{-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE FlexibleInstances #-}
 
 module FreeStream
 
@@ -36,8 +39,8 @@ module FreeStream
 , yield
 , each
 , FreeStream.for
-, (~>)
-, (>~)
+, (|>)
+, (>|)
 , (+>)
 , run
 , liftT
@@ -49,26 +52,16 @@ module FreeStream
 , FreeStream.takeWhile
 , FreeStream.filter
 , (|-)
--- * The actual Stream type
-, Stream(..)
-, toDatum
 ) where
 
+import Prelude hiding (map)
 import Control.Monad.Trans.Class
 import Control.Monad.Trans.Free
 import Data.Monoid
 import Control.Applicative
 import Data.Traversable (Traversable, mapM, traverse)
+import Data.Foldable
 import Control.Monad (forever, unless, replicateM_, when)
-
-{- | Stream
- -}
-
-newtype Stream a = Data { recv :: Maybe a } deriving Show
-deriving instance Functor Stream
-
-toDatum :: a -> Stream a
-toDatum = Data . Just
 
 {- | Process
  -
@@ -85,9 +78,9 @@ data ProcessF a b k
 
 deriving instance Functor (ProcessF a b)
 type Process   a b m r = FreeT      (ProcessF a b) m r
-type Generator   b m r = forall a.   Process  a b  m r
-type Sink      a   m r = forall b.   Process  a b  m r
-type Action        m r = forall a b. Process  a b  m r
+type Generator   b m r = Process  r b  m r
+type Sink      a   m r = Process  a r  m r
+type Action        m r = Process  r r  m r
 
 run = runFreeT
 
@@ -104,8 +97,7 @@ yield x = liftF $ Yield (x,())
 liftT = lift . runFreeT
 
 -- | Convert a list to GeneratorT
-each :: (Monad m, Traversable f, Monoid (f b)) => f b -> Generator b m ()
-each as = Data.Traversable.mapM yield as >> return ()
+each as = Data.Foldable.mapM_ yield as
 
 -- | Loop over the data from a generator, performing some action on each datum
 for :: Monad m => Process a b m r1 -> (b -> Process a c m r2) -> Process a c m r1
@@ -121,21 +113,21 @@ for src body = liftT src >>= go where
     go (Pure x) = return x
 
 -- | Feed a monadic function into a sink
-(~>) :: Monad m => Process a b m r -> Process r b m s -> m s
-d ~> sink = runFreeT sink >>= go where
+(|>) :: Monad m => Generator b m r -> Sink b m s -> m s
+d |> sink = runFreeT sink >>= go where
     go (Free (Await f)) = do
-        Pure d' <- runFreeT d
-        r  <- runFreeT $ f d'
+        Free (Yield (v, k)) <- runFreeT d
+        r  <- runFreeT $ f v
         go r
 
     go (Pure x) = return x
 
 -- | Compose sinks
-(>~) :: Monad m
+(>|) :: Monad m
      => Sink a m d
      -> Sink d m r
      -> Sink a m r
-s1 >~ s2 = liftT s2 >>= go where
+s1 >| s2 = liftT s2 >>= go where
     go (Free (Await f)) = do
         Pure d' <- liftT s1
         r <- liftT $ f d'
@@ -145,9 +137,9 @@ s1 >~ s2 = liftT s2 >>= go where
 
 -- | Connect two processes into a new pull-based process
 (+>) :: Monad m
-     => Generator b m r
+     => Process x b m r
      -> Process b c m r
-     -> Generator c m r
+     -> Process y c m r
 src +> sink = liftT sink >>= go src where
     go src (Free (Await f)) = do
         input <- liftT src

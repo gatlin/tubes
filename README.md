@@ -51,7 +51,7 @@ Load `test.hs` for some sample iteratee usage. The following is inspired by a
     stop repeating me!
     stop repeating me!
 
-    ghci> run $ (lift getLine) >~ doubleUp >~ print
+    ghci> run $ (lift getLine) >| doubleUp >| print
     one
     two
     onetwo
