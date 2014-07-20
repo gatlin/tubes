@@ -2,8 +2,6 @@
 
 {-# LANGUAGE MonadComprehensions #-}
 {-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE DeriveGeneric #-}
 
 import Prelude hiding ( drop
                       , take
@@ -29,7 +27,6 @@ import Data.Monoid (mempty, (<>), Monoid)
 import System.IO (isEOF)
 import Control.Exception (try, throwIO)
 import Data.Maybe (fromMaybe)
-import qualified GHC.IO.Exception as G
 
 prompt :: Generator String IO ()
 prompt = do
@@ -46,11 +43,8 @@ print = do
     case recv str of
         Nothing -> return ()
         Just v  -> do
-            x   <- lift $ try $ putStrLn v
-            case x of
-                Left e@(G.IOError { G.ioe_type = t }) ->
-                    lift $ unless (t == G.ResourceVanished) $ throwIO e
-                Right () -> print
+            lift . putStrLn $ v
+            print
 
 evenNumbers = for (each [1..10] |- isEven +> map show) putStrLn
     where isEven n = if n `mod` 2 == 0 then True else False
