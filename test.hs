@@ -14,6 +14,9 @@ import Prelude hiding ( drop
 import FreeStream
 import Control.Monad (forever, unless, replicateM_, when)
 import Control.Monad.Trans.Free
+import Control.Applicative
+import Control.Alternative.Free
+import Control.Applicative.Free (runAp, retractAp)
 import Data.Traversable hiding (for)
 import Data.Foldable
 import Data.Monoid (mempty, (<>), Monoid)
@@ -57,3 +60,4 @@ evenNumbers = for (each [1..10] |- isEven) $ \n -> do
     lift $ putStrLn . show $ n
 
     where isEven x = if x `mod` 2 == 0 then True else False
+
