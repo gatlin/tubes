@@ -43,12 +43,11 @@ data ProcessF a b k
 
 deriving instance Functor (ProcessF a b)
 type Process   a b m r = FreeT      (ProcessF a b) m r
-type Generator   b m r = Process  r b  m r
-type Sink      a   m r = Process  a r  m r
-type Action        m r = Process  r r  m r
+type Generator   b m r = forall x. Process x b m r
+type Sink      a   m r = forall x. Process a x m r
+type Action        m r = forall x. Process x x m r
 
 run = runFreeT
-
 
 {- | Basic Process infrastructure -}
 

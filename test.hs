@@ -14,7 +14,7 @@ import Prelude hiding ( drop
                       , foldr'
                       )
 import FreeStream
-import Control.Monad (forever, unless, replicateM_, when, mapM_)
+import Control.Monad (forever, unless, replicateM_, when)
 import Control.Monad.Trans.Free
 import Control.Applicative
 import Control.Alternative.Free
@@ -67,3 +67,13 @@ evenNumbers = for (each [1..10] |- isEven) $ \n -> do
 fizzbuzz n = fromMaybe (show n) $ [ "fizz" | n `rem` 3 == 0 ]
                                <> [ "buzz" | n `rem` 5 == 0 ]
                                <> [ "bazz" | n `rem` 7 == 0 ]
+
+sumS :: Monad m => Sink (Stream Int) m Int
+sumS = loop 0 where
+    loop acc = do
+        n <- await
+        case recv n of
+            Just v -> loop (acc + v)
+            Nothing -> return acc
+
+relay sink = sink >>= yield

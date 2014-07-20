@@ -14,6 +14,8 @@
  - could get using free monads.
  -}
 
+{-# LANGUAGE RankNTypes #-}
+
 module FreeStream
 
 ( ProcessF(..)
@@ -46,6 +48,8 @@ module FreeStream
 -- * Stream
 , Stream(..)
 , StreamF(..)
+, message
+, recv
 ) where
 
 import Prelude hiding (map)
@@ -78,7 +82,7 @@ drop n = do
 filter :: Monad m => (a -> Bool) -> Process a a m r
 filter pred = for cat $ \x -> when (pred x) (yield x)
 
--- | Terminates the stream upon receiving a value matching the predicate
+-- | Terminates the stream upon receiving a value violating the predicate
 takeWhile :: Monad m => (a -> Bool) -> Process a a m ()
 takeWhile pred = go
     where
