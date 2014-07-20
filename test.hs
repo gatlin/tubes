@@ -31,16 +31,6 @@ import Control.Exception (try, throwIO)
 import Data.Maybe (fromMaybe)
 import qualified GHC.IO.Exception as G
 
-ex1 = do
-    let people = [ "gatlin"
-                 , "mike"
-                 , "ian"
-                 , "ryan"
-                 ]
-
-    for (each people |- (/= "mike") +> map (++ " sucks")) $ \p -> do
-        putStrLn $ p
-
 prompt :: Generator String IO ()
 prompt = do
     lift . putStr $ "> "
