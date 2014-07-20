@@ -14,7 +14,7 @@ It will probably change often and at any given moment could be brilliant, horrif
 Load `test.hs` for some sample iteratee usage. The following is inspired by a
 [pipes tutorial][pipes] I found.
 
-    ghci> for (each [1..10]) $ putStrLn . show
+    ghci> for (each [1..10] +> map show) putStrLn
     1
     2
     3
@@ -26,7 +26,7 @@ Load `test.hs` for some sample iteratee usage. The following is inspired by a
     9
     10
 
-    ghci> for (each [1..9] +> drop 7) $ putStrLn . show
+    ghci> for (each [1..9] +> drop 7 +> map show) putStrLn
     8
     9
 
@@ -49,20 +49,18 @@ Load `test.hs` for some sample iteratee usage. The following is inspired by a
     ghci> stream (each [1..10]) |> sumS
     55
 
-    ghci> stream (prompt +> take 3) |> print
-    > one
-    one
-    > two
-    two
-    > three
-    three
-
     ghci> let maxInput n = prompt +> take n
     ghci> stream (maxInput 2) |> print
     > first
     first
     > second
     second
+
+    ghci> stream (each [1..10] +> map (:[])) |> accum
+    [1,2,3,4,5,6,7,8,9,10]
+
+    ghci> stream (each (Just 1) +> map (:[])) |> accum
+    [1]
 
 Given:
 

@@ -47,6 +47,7 @@ module FreeStream
 , FreeStream.takeWhile
 , FreeStream.filter
 , FreeStream.fold
+, FreeStream.accum
 , (|-)
 -- * Stream
 , Stream(..)
@@ -62,6 +63,7 @@ import Control.Monad.Trans.Class
 import Control.Monad.Trans.Free
 import Control.Monad.Free
 import Control.Monad (forever, unless, replicateM_, when)
+import Data.Monoid ((<>), mempty, Monoid)
 
 import FreeStream.Core
 import FreeStream.Stream
@@ -128,3 +130,6 @@ fold step init = loop init where
         case recv n of
             Just v  -> loop (step acc v)
             Nothing -> return acc
+
+accum :: (Monad m, Monoid a) => Sink (Stream a) m a
+accum = fold (<>) mempty

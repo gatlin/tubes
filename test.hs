@@ -75,15 +75,5 @@ sumS = fold (+) 0
 prodS :: Monad m => Sink (Stream Int) m Int
 prodS = fold (*) 1
 
-reverseS :: Monad m => Sink (Stream String) m String
-reverseS = loop "" where
-    loop acc = do
-        str <- await
-        case recv str of
-            Just v -> loop $ acc ++ (reverse v)
-            Nothing -> return acc
-
 relay sink = sink >>= yield
 
-accum :: Monad m => Sink (Stream String) m String
-accum = fold (++) ""
