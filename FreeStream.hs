@@ -43,6 +43,9 @@ module FreeStream
 , FreeStream.takeWhile
 , FreeStream.filter
 , (|-)
+-- * Stream
+, Stream(..)
+, StreamF(..)
 ) where
 
 import Prelude hiding (map)
@@ -51,6 +54,7 @@ import Control.Monad.Trans.Free
 import Control.Monad (forever, unless, replicateM_, when)
 
 import FreeStream.Core
+import FreeStream.Stream
 
 {- | Useful utilities -}
 

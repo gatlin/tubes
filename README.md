@@ -74,6 +74,28 @@ Load `test.hs` for some sample iteratee usage. The following is inspired by a
     > second
     second
 
+Given:
+
+    {-# LANGUAGE MonadComprehensions #-}
+    fizzbuzz n = fromMaybe (show n) $ [ "fizz" | n `rem` 3 == 0 ]
+                                   <> [ "buzz" | n `rem` 5 == 0 ]
+                                   <> [ "bazz" | n `rem` 7 == 0 ]
+
+then ...
+
+    ghci> run $ each [1..100] +> map fizzbuzz +> print
+    1
+    2
+    fizz
+    4
+    buzz
+    fizz
+    bazz
+    8
+    fizz
+    buzz
+    ...
+
 [iteratees]: http://okmij.org/ftp/Streams.html
 [pipes]: https://www.fpcomplete.com/school/to-infinity-and-beyond/pick-of-the-week/Pipes%20tutorial
 
