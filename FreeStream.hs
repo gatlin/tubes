@@ -37,6 +37,7 @@ module FreeStream
 , (|>)
 , (>|)
 , (+>)
+, (>+)
 , run
 , liftT
 -- * Utilities
@@ -121,6 +122,13 @@ take n = do
      -> (b -> Bool)
      -> Generator b m r
 src |- pred = src +> FreeStream.filter pred
+
+-- | Shorthand for src +> map f
+(>+) :: (Monad m)
+     => Generator a m r
+     -> (a -> b)
+     -> Generator b m r
+src >+ f = src +> FreeStream.map f
 
 -- | Fold a Stream of values
 fold :: Monad m => (a -> a -> a) -> a -> Sink (Stream a) m a

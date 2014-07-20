@@ -14,7 +14,7 @@ It will probably change often and at any given moment could be brilliant, horrif
 Load `test.hs` for some sample iteratee usage. The following is inspired by a
 [pipes tutorial][pipes] I found.
 
-    ghci> for (each [1..10] +> map show) putStrLn
+    ghci> for (each [1..10] >+ map show) putStrLn
     1
     2
     3
@@ -26,11 +26,11 @@ Load `test.hs` for some sample iteratee usage. The following is inspired by a
     9
     10
 
-    ghci> for (each [1..9] +> drop 7 +> map show) putStrLn
+    ghci> for (each [1..9] +> drop 7 >+ show) putStrLn
     8
     9
 
-    ghci> stream (prompt |- (/= "Die Antwoord") +> map (++ " sucks")) |> print
+    ghci> stream (prompt |- (/= "Die Antwoord") >+ (++ " sucks")) |> print
     > dubstep
     dubstep sucks
     > normal music
@@ -56,10 +56,10 @@ Load `test.hs` for some sample iteratee usage. The following is inspired by a
     > second
     second
 
-    ghci> stream (each [1..10] +> map (:[])) |> accum
+    ghci> stream (each [1..10] >+ (:[])) |> accum
     [1,2,3,4,5,6,7,8,9,10]
 
-    ghci> stream (each (Just 1) +> map (:[])) |> accum
+    ghci> stream (each (Just 1) >+ (:[])) |> accum
     [1]
 
 Given:
@@ -71,7 +71,7 @@ Given:
 
 then ...
 
-    ghci> for (each [1..100] +> map fizzbuzz) putStrLn
+    ghci> for (each [1..100] >+ fizzbuzz) putStrLn
     1
     2
     fizz
