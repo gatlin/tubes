@@ -32,6 +32,7 @@ module FreeStream
 , await
 , yield
 , each
+, FreeStream.Core.iterate
 , FreeStream.Core.for
 , (|>)
 , (>|)
@@ -56,9 +57,10 @@ module FreeStream
 , stream
 ) where
 
-import Prelude hiding (map, fold)
+import Prelude hiding (map, fold, iterate)
 import Control.Monad.Trans.Class
 import Control.Monad.Trans.Free
+import Control.Monad.Free
 import Control.Monad (forever, unless, replicateM_, when)
 
 import FreeStream.Core
@@ -75,12 +77,12 @@ cat = forever $ do
 -- | Transform all input values into Stream messages
 stream :: Monad m => Generator a m () -> Generator (Stream a) m ()
 stream src = do
-    for src $ \x -> yield (message x)
+    iterate src $ \x -> yield (message x)
     yield halt
 
 -- | Transforms all incoming values according to some function.
 map :: (Monad m) => (a -> b) -> Process a b m r
-map f = for cat $ \x -> yield (f x)
+map f = iterate cat $ \x -> yield (f x)
 
 -- | Refuses to yield the first `n` values it receives.
 drop :: Monad m => Int -> Process a a m r
@@ -90,7 +92,7 @@ drop n = do
 
 -- | Yields only values satisfying some predicate.
 filter :: Monad m => (a -> Bool) -> Process a a m r
-filter pred = for cat $ \x -> when (pred x) (yield x)
+filter pred = iterate cat $ \x -> when (pred x) (yield x)
 
 -- | Terminates the stream upon receiving a value violating the predicate
 takeWhile :: Monad m => (a -> Bool) -> Process a a m ()

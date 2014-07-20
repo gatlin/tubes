@@ -18,7 +18,8 @@ module FreeStream.Core
 , yield
 , liftT
 , each
-, for
+, FreeStream.Core.iterate
+, FreeStream.Core.for
 , (|>)
 , (>|)
 , (+>)
@@ -71,8 +72,8 @@ each :: (Monad m, Foldable t) => t b -> Process a b m ()
 each as = Data.Foldable.mapM_ yield as
 
 -- | Loop over the data from a generator, performing some action on each datum
-for :: Monad m => Process a b m r1 -> (b -> Process a c m r2) -> Process a c m r1
-for src body = liftT src >>= go where
+iterate :: Monad m => Process a b m r1 -> (b -> Process a c m r2) -> Process a c m r1
+iterate src body = liftT src >>= go where
     go (Free (Yield (v, k))) = do
         body v
         liftT k >>= go
@@ -83,13 +84,33 @@ for src body = liftT src >>= go where
 
     go (Pure x) = return x
 
+-- | Like iterate, but usable in the base monad
+for :: Monad m
+    => Generator a m r
+    -> (a -> m r)
+    -> m r
+for src body = runFreeT src >>= go where
+    go (Free (Yield (v, k))) = do
+        body v
+        runFreeT k >>= go
+
+    go (Free (Await f)) = do
+        v <- runFreeT await
+        runFreeT (f v) >>= go
+
+    go (Pure x) = return x
+
 -- | Feed a monadic function into a sink
 (|>) :: Monad m => Generator b m r -> Sink b m s -> m s
 d |> sink = runFreeT sink >>= go d where
     go src (Free (Await f)) = do
-        Free (Yield (v, k)) <- runFreeT src
-        r  <- runFreeT $ f v
-        go k r
+        val <- runFreeT src
+        case val of
+            Free (Yield (v, k)) -> do
+                r  <- runFreeT $ f v
+                go k r
+
+            -- TODO need to deal with the pure case
 
     go _ (Pure x) = return x
 

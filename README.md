@@ -14,7 +14,7 @@ It will probably change often and at any given moment could be brilliant, horrif
 Load `test.hs` for some sample iteratee usage. The following is inspired by a
 [pipes tutorial][pipes] I found.
 
-    ghci> run $ for (each [1..10]) $ \n -> lift $ putStrLn . show $ n
+    ghci> for (each [1..10]) $ putStrLn . show
     1
     2
     3
@@ -26,11 +26,11 @@ Load `test.hs` for some sample iteratee usage. The following is inspired by a
     9
     10
 
-    ghci> run $ for (each [1..9] +> drop 7) $ \n -> lift $ putStrLn . show $ n
+    ghci> for (each [1..9] +> drop 7) $ putStrLn . show
     8
     9
 
-    ghci> run $ prompt |- (/= "Die Antwoord") +> map (++ " sucks") +> print
+    ghci> stream (prompt |- (/= "Die Antwoord") +> map (++ " sucks")) |> print
     > dubstep
     dubstep sucks
     > normal music
@@ -39,17 +39,17 @@ Load `test.hs` for some sample iteratee usage. The following is inspired by a
     > rock
     rock sucks
 
-    ghci> run $ for prompt $ \str -> lift . putStrLn $ "Printing: " ++ str
+    ghci> for prompt putStrLn
     > one
-    Printing: one
+    one
     > two
-    Printing: two
+    two
 
     ghci> let sumS = fold (+) 0 :: Sink (Stream Int) IO Int
     ghci> stream (each [1..10]) |> sumS
     55
 
-    ghci> run $ prompt +> take 3 +> print
+    ghci> stream (prompt +> take 3) |> print
     > one
     one
     > two
@@ -58,7 +58,7 @@ Load `test.hs` for some sample iteratee usage. The following is inspired by a
     three
 
     ghci> let maxInput n = prompt +> take n
-    ghci> run $ maxInput 2 +> print
+    ghci> stream (maxInput 2) |> print
     > first
     first
     > second
@@ -73,7 +73,7 @@ Given:
 
 then ...
 
-    ghci> run $ each [1..100] +> map fizzbuzz +> print
+    ghci> for (each [1..100] +> map fizzbuzz) putStrLn
     1
     2
     fizz

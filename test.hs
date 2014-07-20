@@ -2,6 +2,8 @@
 
 {-# LANGUAGE MonadComprehensions #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE DeriveGeneric #-}
 
 import Prelude hiding ( drop
                       , take
@@ -13,6 +15,7 @@ import Prelude hiding ( drop
                       , foldl'
                       , foldr
                       , foldr'
+                      , iterate
                       )
 import FreeStream
 import Control.Monad (forever, unless, replicateM_, when)
@@ -28,6 +31,16 @@ import Control.Exception (try, throwIO)
 import Data.Maybe (fromMaybe)
 import qualified GHC.IO.Exception as G
 
+ex1 = do
+    let people = [ "gatlin"
+                 , "mike"
+                 , "ian"
+                 , "ryan"
+                 ]
+
+    for (each people |- (/= "mike") +> map (++ " sucks")) $ \p -> do
+        putStrLn $ p
+
 prompt :: Generator String IO ()
 prompt = do
     lift . putStr $ "> "
@@ -37,33 +50,20 @@ prompt = do
         yield str
         prompt
 
-print :: Sink String IO ()
+print :: Sink (Stream String) IO ()
 print = do
     str <- await
-    x   <- lift $ try $ putStrLn str
-    case x of
-        Left e@(G.IOError { G.ioe_type = t }) ->
-            lift $ unless (t == G.ResourceVanished) $ throwIO e
-        Right () -> print
+    case recv str of
+        Nothing -> return ()
+        Just v  -> do
+            x   <- lift $ try $ putStrLn v
+            case x of
+                Left e@(G.IOError { G.ioe_type = t }) ->
+                    lift $ unless (t == G.ResourceVanished) $ throwIO e
+                Right () -> print
 
-handle :: Sink String IO String
-handle = do
-    str <- await
-    return $ "Handling: " ++ str
-
-doubleUp :: Sink String IO String
-doubleUp = do
-    str1 <- await
-    str2 <- await
-    return $ str1 ++ str2
-
-insult :: Action IO ()
-insult = prompt +> map (++ " sucks") +> print
-
-evenNumbers = for (each [1..10] |- isEven) $ \n -> do
-    lift $ putStrLn . show $ n
-
-    where isEven x = if x `mod` 2 == 0 then True else False
+evenNumbers = for (each [1..10] |- isEven +> map show) putStrLn
+    where isEven n = if n `mod` 2 == 0 then True else False
 
 fizzbuzz n = fromMaybe (show n) $ [ "fizz" | n `rem` 3 == 0 ]
                                <> [ "buzz" | n `rem` 5 == 0 ]
@@ -84,3 +84,6 @@ reverseS = loop "" where
             Nothing -> return acc
 
 relay sink = sink >>= yield
+
+accum :: Monad m => Sink (Stream String) m String
+accum = fold (++) ""
