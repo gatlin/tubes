@@ -27,6 +27,7 @@ module FreeStream
 , lift -- re-exported from Control.Monad.Trans.Free
 , Free -- re-exported from Control.Monad.Trans.Free
 , runFreeT -- re-exported from Control.Monad.Trans.Free
+, runProcess
 -- * Core infrastructure
 , await
 , yield
@@ -44,15 +45,18 @@ module FreeStream
 , FreeStream.take
 , FreeStream.takeWhile
 , FreeStream.filter
+, FreeStream.fold
 , (|-)
 -- * Stream
 , Stream(..)
 , StreamF(..)
 , message
 , recv
+, halt
+, stream
 ) where
 
-import Prelude hiding (map)
+import Prelude hiding (map, fold)
 import Control.Monad.Trans.Class
 import Control.Monad.Trans.Free
 import Control.Monad (forever, unless, replicateM_, when)
@@ -67,6 +71,12 @@ cat :: Monad m => Process a a m r
 cat = forever $ do
     x <- await
     yield x
+
+-- | Transform all input values into Stream messages
+stream :: Monad m => Generator a m () -> Generator (Stream a) m ()
+stream src = do
+    for src $ \x -> yield (message x)
+    yield halt
 
 -- | Transforms all incoming values according to some function.
 map :: (Monad m) => (a -> b) -> Process a b m r
@@ -101,9 +111,18 @@ take n = do
         x <- await
         yield x
 
+-- | Shorthand for src +> filter pred
 (|-) :: (Monad m)
      => Generator b m r
      -> (b -> Bool)
      -> Generator b m r
 src |- pred = src +> FreeStream.filter pred
 
+-- | Fold a Stream of values
+fold :: Monad m => (a -> a -> a) -> a -> Sink (Stream a) m a
+fold step init = loop init where
+    loop acc = do
+        n <- await
+        case recv n of
+            Just v  -> loop (step acc v)
+            Nothing -> return acc

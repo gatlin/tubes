@@ -22,11 +22,14 @@ module FreeStream.Core
 , (|>)
 , (>|)
 , (+>)
+, runProcess
 ) where
 
 import Control.Monad.Trans.Class
 import Control.Monad.Trans.Free
 import Data.Foldable
+
+import FreeStream.Stream
 
 {- | Process
  -
@@ -48,6 +51,8 @@ type Sink      a   m r = forall x. Process a x m r
 type Action        m r = forall x. Process x x m r
 
 run = runFreeT
+
+runProcess (Pure x) = return x
 
 {- | Basic Process infrastructure -}
 
@@ -80,13 +85,13 @@ for src body = liftT src >>= go where
 
 -- | Feed a monadic function into a sink
 (|>) :: Monad m => Generator b m r -> Sink b m s -> m s
-d |> sink = runFreeT sink >>= go where
-    go (Free (Await f)) = do
-        Free (Yield (v, k)) <- runFreeT d
+d |> sink = runFreeT sink >>= go d where
+    go src (Free (Await f)) = do
+        Free (Yield (v, k)) <- runFreeT src
         r  <- runFreeT $ f v
-        go r
+        go k r
 
-    go (Pure x) = return x
+    go _ (Pure x) = return x
 
 -- | Compose sinks
 (>|) :: Monad m

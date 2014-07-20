@@ -45,19 +45,9 @@ Load `test.hs` for some sample iteratee usage. The following is inspired by a
     > two
     Printing: two
 
-    ghci> (lift getLine) ~> print
-    hello
-    hello
-    stop repeating me!
-    stop repeating me!
-
-    ghci> run $ (lift getLine) >| doubleUp >| print
-    one
-    two
-    onetwo
-    three
-    four
-    threefour
+    ghci> let sumS = fold (+) 0 :: Sink (Stream Int) IO Int
+    ghci> stream (each [1..10]) |> sumS
+    55
 
     ghci> run $ prompt +> take 3 +> print
     > one

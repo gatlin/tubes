@@ -1,6 +1,7 @@
 -- | Load this up in ghci to play around
 
 {-# LANGUAGE MonadComprehensions #-}
+{-# LANGUAGE RankNTypes #-}
 
 import Prelude hiding ( drop
                       , take
@@ -20,7 +21,7 @@ import Control.Applicative
 import Control.Alternative.Free
 import Control.Applicative.Free (runAp, retractAp)
 import Data.Traversable hiding (for)
-import Data.Foldable
+import Data.Foldable hiding (fold)
 import Data.Monoid (mempty, (<>), Monoid)
 import System.IO (isEOF)
 import Control.Exception (try, throwIO)
@@ -69,11 +70,17 @@ fizzbuzz n = fromMaybe (show n) $ [ "fizz" | n `rem` 3 == 0 ]
                                <> [ "bazz" | n `rem` 7 == 0 ]
 
 sumS :: Monad m => Sink (Stream Int) m Int
-sumS = loop 0 where
+sumS = fold (+) 0
+
+prodS :: Monad m => Sink (Stream Int) m Int
+prodS = fold (*) 1
+
+reverseS :: Monad m => Sink (Stream String) m String
+reverseS = loop "" where
     loop acc = do
-        n <- await
-        case recv n of
-            Just v -> loop (acc + v)
+        str <- await
+        case recv str of
+            Just v -> loop $ acc ++ (reverse v)
             Nothing -> return acc
 
 relay sink = sink >>= yield
