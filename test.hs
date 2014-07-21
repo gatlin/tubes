@@ -53,10 +53,10 @@ fizzbuzz n = fromMaybe (show n) $ [ "fizz" | n `rem` 3 == 0 ]
                                <> [ "buzz" | n `rem` 5 == 0 ]
                                <> [ "bazz" | n `rem` 7 == 0 ]
 
-sumS :: Monad m => Sink (Stream Int) m Int
+sumS :: Monad m => Sink (Stream Integer) m Integer
 sumS = fold (+) 0
 
-prodS :: Monad m => Sink (Stream Int) m Int
+prodS :: Monad m => Sink (Stream Integer) m Integer
 prodS = fold (*) 1
 
 relay sink = sink >>= yield
