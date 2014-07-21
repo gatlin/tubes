@@ -14,7 +14,7 @@ It will probably change often and at any given moment could be brilliant, horrif
 Load `test.hs` for some sample iteratee usage. The following is inspired by a
 [pipes tutorial][pipes] I found.
 
-    ghci> for (each [1..10] >+ map show) putStrLn
+    ghci> for (each [1..10] +> map show) putStrLn
     1
     2
     3
