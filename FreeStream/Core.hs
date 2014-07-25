@@ -21,7 +21,6 @@ module FreeStream.Core
 , FreeStream.Core.iterate
 , FreeStream.Core.for
 , (|>)
-, (>|)
 , (+>)
 , runProcess
 ) where
@@ -113,19 +112,6 @@ d |> sink = runFreeT sink >>= go d where
             -- TODO need to deal with the pure case
 
     go _ (Pure x) = return x
-
--- | Compose sinks
-(>|) :: Monad m
-     => Sink a m d
-     -> Sink d m r
-     -> Sink a m r
-s1 >| s2 = liftT s2 >>= go where
-    go (Free (Await f)) = do
-        Pure d' <- liftT s1
-        r <- liftT $ f d'
-        go r
-
-    go (Pure x) = return x
 
 -- | Connect two processes into a new pull-based process
 (+>) :: Monad m

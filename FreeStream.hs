@@ -34,7 +34,6 @@ module FreeStream
 , FreeStream.Core.iterate
 , FreeStream.Core.for
 , (|>)
-, (>|)
 , (+>)
 , (>+)
 , run
