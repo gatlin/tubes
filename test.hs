@@ -26,7 +26,7 @@ import Data.Foldable hiding (fold)
 import Data.Monoid (mempty, (<>), Monoid)
 import System.IO (isEOF)
 import Control.Exception (try, throwIO)
-import Data.Maybe (fromMaybe)
+import Data.Maybe (fromMaybe, fromJust)
 
 prompt :: Generator String IO ()
 prompt = do
@@ -46,6 +46,7 @@ print = do
             lift . putStrLn $ v
             print
 
+evenNumbers :: IO ()
 evenNumbers = for (each [1..10] |- isEven +> map show) putStrLn
     where isEven n = if n `mod` 2 == 0 then True else False
 
