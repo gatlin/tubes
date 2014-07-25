@@ -12,6 +12,8 @@ import Prelude hiding ( drop
                       )
 import FreeStream
 import Data.Foldable hiding (fold)
+import System.IO (isEOF)
+import Control.Monad (forever, unless, replicateM_, when)
 
 data Arithmetic
     = Value Int
@@ -46,6 +48,7 @@ parseArith = loop [] where
                     v <- return $ getToken token
                     loop $ (Value (read [v])):stack
             Nothing -> return . Just . head $ stack
+
     buildBranch con stack = do
         if length stack < 2
             then return Nothing
@@ -54,15 +57,22 @@ parseArith = loop [] where
                 r          <- return $ con l r
                 loop $ r:rest
 
-bullshit :: Sink TokenStream IO (Maybe Arithmetic)
-bullshit = await >> return Nothing
-
 astring = "5 6 * 2 3 * +"
 
-rpn :: Foldable t => t Char -> IO (Maybe Int)
+rpn :: Foldable t => t Char -> IO ()
 rpn str = do
     a <- stream (each str |- (/= ' ') >+ Token) |> parseArith
     case a of
-        Just x  -> return . Just . doArith $ x
-        _       -> return Nothing
+        Just x  -> putStrLn . show $ doArith x
+        _       -> return ()
 
+prompt :: Generator String IO ()
+prompt = do
+    lift . putStr $ "> "
+    eof <- lift isEOF
+    unless eof $ do
+        str <- lift getLine
+        yield str
+        prompt
+
+runCalc = for prompt rpn
