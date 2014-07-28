@@ -62,3 +62,12 @@ prodS = fold (*) 1
 
 relay sink = sink >>= yield
 
+getwords :: Sink (Stream Char) IO [String]
+getwords = loop "" [] where
+    loop s acc = do
+        d <- await
+        case recv d of
+            Nothing -> return (acc++[s])
+            Just  c -> case c of
+                ' ' -> loop "" (s:acc)
+                _   -> loop (s ++ [c]) acc
