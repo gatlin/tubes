@@ -27,7 +27,7 @@ import Control.Applicative
 
 newtype StreamF a = Message {
     recvF :: Maybe a
-} deriving Show
+} deriving (Show, Eq)
 
 deriving instance Functor StreamF
 type Stream = Alt StreamF

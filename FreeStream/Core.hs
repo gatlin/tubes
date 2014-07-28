@@ -22,6 +22,7 @@ module FreeStream.Core
 , FreeStream.Core.for
 , (|>)
 , (+>)
+, (~>)
 , runProcess
 ) where
 
@@ -83,6 +84,8 @@ iterate src body = liftT src >>= go where
 
     go (Pure x) = return x
 
+src ~> body = FreeStream.Core.iterate src body
+
 -- | Like iterate, but usable in the base monad
 for :: Monad m
     => Generator a m r
@@ -99,8 +102,8 @@ for src body = runFreeT src >>= go where
 
     go (Pure x) = return x
 
--- | Feed a monadic function into a sink
-(|>) :: Monad m => Generator b m r -> Sink b m s -> m s
+-- | Feed a stream generator into a stream reducer
+(|>) :: Monad m => Generator (Stream b) m r -> Sink (Stream b) m s -> m s
 d |> sink = runFreeT sink >>= go d where
     go src (Free (Await f)) = do
         val <- runFreeT src
@@ -109,7 +112,7 @@ d |> sink = runFreeT sink >>= go d where
                 r  <- runFreeT $ f v
                 go k r
 
-            -- TODO need to deal with the pure case
+            Pure _ -> runFreeT (f halt) >>= go src
 
     go _ (Pure x) = return x
 

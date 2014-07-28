@@ -36,6 +36,7 @@ module FreeStream
 , (|>)
 , (+>)
 , (>+)
+, (~>)
 , run
 , liftT
 -- * Utilities

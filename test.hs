@@ -71,3 +71,4 @@ getwords = loop "" [] where
             Just  c -> case c of
                 ' ' -> loop "" (s:acc)
                 _   -> loop (s ++ [c]) acc
+

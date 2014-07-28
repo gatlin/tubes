@@ -13,11 +13,12 @@ import Prelude hiding ( drop
                       , iterate
                       )
 import FreeStream
-import Data.Foldable hiding (fold)
+import Data.Foldable hiding (fold, or)
 import System.IO (isEOF)
 import Control.Monad (forever, unless, replicateM_, when)
 import Control.Monad.Trans.Free
 import Data.Maybe (fromJust)
+import Control.Applicative
 
 data Arithmetic
     = Value Int
@@ -34,22 +35,19 @@ doArith (Mul l r) = (doArith l) * (doArith r)
 doArith (Sub l r) = (doArith l) - (doArith r)
 doArith (Div l r) = (doArith l) `div` (doArith r)
 
-newtype Token a = Token { getToken :: a } deriving (Show, Eq)
-type TokenStream = Stream (Token String)
-
-parseArith :: Sink TokenStream IO (Maybe Arithmetic)
+parseArith :: Sink (Stream String) IO (Maybe Arithmetic)
 parseArith = loop [] where
     loop stack = do
         d <- await
         case recv d of
-            Just token -> case getToken token of
+            Just token -> case token of
                 "+" -> buildBranch (Add) stack
                 "*" -> buildBranch (Mul) stack
                 "-" -> buildBranch (Sub) stack
                 "/" -> buildBranch (Div) stack
 
                 _   -> do
-                    v <- return $ getToken token
+                    v <- return token
                     loop $ (Value (read v)):stack
             Nothing -> return . Just . head $ stack
 
@@ -72,23 +70,38 @@ prompt = do
         yield str
         prompt
 
-tokenize :: Sink (Stream Char) IO [Token String]
-tokenize = loop "" [] where
-    loop s acc = do
+print :: Sink (Stream String) IO ()
+print = do
+    str <- await
+    case recv str of
+        Nothing -> return ()
+        Just v  -> do
+            lift . putStrLn $ v
+            print
+
+isNotSpace :: Stream String -> Bool
+isNotSpace strm = s /= " "
+    where s = fromJust . recv $ strm
+
+tokenize :: Process (Stream Char) (Stream String) IO ()
+tokenize = loop "" where
+    loop acc = do
         d <- await
         case recv d of
-            Nothing -> return (acc++[Token s])
-            Just  c -> case c of
-                ' ' -> loop "" (acc++[Token s])
-                _   -> loop (s ++ [c]) acc
+            Nothing -> go acc >> return ()
+            Just c -> case c of
+                ' ' -> do
+                    go acc
+                    loop ""
+                _   -> loop $ acc ++ [c]
+    go acc = case acc of
+        "" -> return ()
+        " " -> return ()
+        _ -> yield $ message acc
 
 rpn :: String -> IO (Maybe Int)
 rpn str = do
-    tokens <- stream (each str) |> tokenize
-    parsed <- stream (each tokens |- (/= Token "")) |> parseArith
+    parsed <- stream (each str) +> tokenize |> parseArith
     case parsed of
-        Just p -> return . Just $ doArith p
         Nothing -> return Nothing
-
-gen :: Monad m => b -> Generator b m ()
-gen sink = yield sink >> return ()
+        Just  p -> return . Just $ doArith p
