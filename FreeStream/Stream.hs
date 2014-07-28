@@ -6,8 +6,6 @@
 
 {- | Streams
  -
- - This module isn't really used yet, but I'm working on it anyway.
- -
  - The goal is to model exhaustible streams for use with Processes.
  -}
 
