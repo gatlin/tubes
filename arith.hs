@@ -61,28 +61,6 @@ parseArith = loop [] where
 
 astring = "56 2 * 30 +"
 
-prompt :: Generator String IO ()
-prompt = do
-    lift . putStr $ "> "
-    eof <- lift isEOF
-    unless eof $ do
-        str <- lift getLine
-        yield str
-        prompt
-
-print :: Sink (Stream String) IO ()
-print = do
-    str <- await
-    case recv str of
-        Nothing -> return ()
-        Just v  -> do
-            lift . putStrLn $ v
-            print
-
-isNotSpace :: Stream String -> Bool
-isNotSpace strm = s /= " "
-    where s = fromJust . recv $ strm
-
 tokenize :: Process (Stream Char) (Stream String) IO ()
 tokenize = loop "" where
     loop acc = do
