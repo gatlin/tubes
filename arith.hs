@@ -13,12 +13,9 @@ import Prelude hiding ( drop
                       , iterate
                       )
 import FreeStream
-import Data.Foldable hiding (fold, or)
 import System.IO (isEOF)
-import Control.Monad (forever, unless, replicateM_, when)
 import Control.Monad.Trans.Free
 import Data.Maybe (fromJust)
-import Control.Applicative
 
 data Arithmetic
     = Value Int
