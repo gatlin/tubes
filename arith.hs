@@ -55,7 +55,7 @@ parseArith = loop [] where
         if length stack < 2
             then return Nothing
             else do
-                (l:r:rest) <- return stack
+                (r:l:rest) <- return stack
                 r          <- return $ con l r
                 loop $ r:rest
 
@@ -71,7 +71,7 @@ tokenize = loop "" where
                 ' ' -> do
                     go acc
                     loop ""
-                _   -> loop $ acc ++ [c]
+                _   -> loop $ c:acc
     go acc = case acc of
         "" -> return ()
         " " -> return ()
