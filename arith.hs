@@ -13,9 +13,7 @@ import Prelude hiding ( drop
                       , iterate
                       )
 import FreeStream
-import System.IO (isEOF)
 import Control.Monad.Trans.Free
-import Data.Maybe (fromJust)
 
 data Arithmetic
     = Value Int
@@ -70,7 +68,9 @@ tokenize = loop "" where
     go acc = case acc of
         "" -> return ()
         " " -> return ()
-        _ -> yield $ message acc
+        _ -> send acc
+
+    send = yield . message
 
 rpn :: String -> IO (Maybe Int)
 rpn str = do
