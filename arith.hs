@@ -71,7 +71,7 @@ tokenize = loop "" where
                 ' ' -> do
                     go acc
                     loop ""
-                _   -> loop $ c:acc
+                _   -> loop $ acc ++ [c]
     go acc = case acc of
         "" -> return ()
         " " -> return ()
