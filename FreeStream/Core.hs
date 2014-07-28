@@ -23,7 +23,6 @@ module FreeStream.Core
 , (|>)
 , (+>)
 , (~>)
-, runProcess
 ) where
 
 import Control.Monad.Trans.Class
@@ -52,8 +51,6 @@ type Sink      a   m r = forall x. Process a x m r
 type Action        m r = forall x. Process x x m r
 
 run = runFreeT
-
-runProcess (Pure x) = return x
 
 {- | Basic Process infrastructure -}
 

@@ -26,7 +26,6 @@ module FreeStream
 -- * Re-exports
 , lift -- re-exported from Control.Monad.Trans.Free
 , runFreeT -- re-exported from Control.Monad.Trans.Free
-, runProcess
 -- * Core infrastructure
 , await
 , yield
