@@ -59,8 +59,6 @@ parseArith = loop [] where
                 r          <- return $ con l r
                 loop $ r:rest
 
-astring = "56 2 * 30 +"
-
 tokenize :: Process (Stream Char) (Stream String) IO ()
 tokenize = loop "" where
     loop acc = do
