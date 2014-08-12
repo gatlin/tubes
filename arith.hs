@@ -70,11 +70,13 @@ tokenize = loop "" where
         " " -> return ()
         _ -> send acc
 
-    send = yield . message
+    send = yield . chunk
 
-rpn :: String -> IO (Maybe Int)
+rpn :: String -> IO ()
 rpn str = do
     parsed <- stream (each str) +> tokenize |> parseArith
     case parsed of
-        Nothing -> return Nothing
-        Just  p -> return . Just $ doArith p
+        Nothing -> return ()
+        Just  p -> do
+            let v = doArith p
+            putStrLn . show $ v

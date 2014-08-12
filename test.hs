@@ -47,7 +47,7 @@ print = do
             print
 
 evenNumbers :: IO ()
-evenNumbers = for (each [1..10] |- isEven +> map show) putStrLn
+evenNumbers = for (each [1..10] |- isEven >+ show) putStrLn
     where isEven n = if n `mod` 2 == 0 then True else False
 
 fizzbuzz n = fromMaybe (show n) $ [ "fizz" | n `rem` 3 == 0 ]
@@ -71,4 +71,3 @@ getwords = loop "" [] where
             Just  c -> case c of
                 ' ' -> loop "" (s:acc)
                 _   -> loop (s ++ [c]) acc
-
