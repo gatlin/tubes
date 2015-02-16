@@ -57,7 +57,8 @@ library
   -- other-modules:       
   
   -- LANGUAGE extensions used by modules in this package.
-  other-extensions:    NoMonomorphismRestriction, RankNTypes
+  other-extensions:    NoMonomorphismRestriction, RankNTypes,
+                       FlexibleInstances, FlexibleContexts
   
   -- Other library packages from which modules are imported.
   build-depends:       base >=4.6 , transformers >=0.3, free >=4.9
