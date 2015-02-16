@@ -5,12 +5,13 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ExistentialQuantification #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE FlexibleContexts #-}
 
 module FreeStream.Core
 
-( Process(..)
-, ProcessF(..)
-, Generator(..)
+( Task(..)
+, TaskF(..)
+, Source(..)
 , Sink(..)
 , Action(..)
 , run
@@ -18,118 +19,84 @@ module FreeStream.Core
 , yield
 , liftT
 , each
-, FreeStream.Core.iterate
 , FreeStream.Core.for
-, (|>)
-, (+>)
+, (><)
+, (>-)
 , (~>)
 ) where
 
 import Control.Monad.Trans.Class
 import Control.Monad.Trans.Free
 import Data.Foldable
+import Data.Monoid
 
-import FreeStream.Stream
-
-{- | Process
- -
- - A process (also called an iteratee) is a function folded over a branching
- - stream. A process exists in one of two states: awaiting a new value, or
- - yielding a result value.
- -
- - Processes are monad transformers, meaning you can construct processes which
- - fold effectful computations over streams of data.
- -}
-data ProcessF a b k
+data TaskF a b k
     = Await (a -> k)
-    | Yield (b, k)
+    | Yield b k
 
-deriving instance Functor (ProcessF a b)
-type Process   a b m r = FreeT      (ProcessF a b) m r
-type Generator   b m r = forall x. Process x b m r
-type Sink      a   m r = forall x. Process a x m r
-type Action        m r = forall x. Process x x m r
+deriving instance Functor (TaskF a b)
+type Task a b m r = FreeT      (TaskF a b) m r
+type Source b m r = forall x. Task x b m r
+type Sink      a   m r = forall x. Task a x m r
+type Action        m r = forall x. Task x x m r
 
 run = runFreeT
 
-{- | Basic Process infrastructure -}
+{- | Basic Task infrastructure -}
 
 -- | Command used by iteratees to receive an upstream value
-await :: (Monad m) => Process a b m a
+await :: MonadFree (TaskF a b) m => m a
 await = liftF $ Await id
 
 -- | Command used by iteratees to yield a value downstream
-yield :: Monad m => b -> Process a b m ()
-yield x = liftF $ Yield (x,())
+yield :: MonadFree (TaskF a b) m => b -> m ()
+yield x = liftF $ Yield x ()
 
 liftT = lift . runFreeT
 
--- | Convert a list to GeneratorT
-each :: (Monad m, Foldable t) => t b -> Process a b m ()
+-- | Convert a list to SourceT
+each :: (Monad m, Foldable t) => t b -> Task a b m ()
 each as = Data.Foldable.mapM_ yield as
 
--- | Loop over the data from a generator, performing some action on each datum
-iterate :: Monad m => Process a b m r1 -> (b -> Process a c m r2) -> Process a c m r1
-iterate src body = liftT src >>= go where
-    go (Free (Yield (v, k))) = do
+src ~> body = FreeStream.Core.for src body
+
+for :: Monad m
+    => Task a b m r
+    -> (b -> Task a c m s)
+    -> Task a c m r
+for src body = liftT src >>= go where
+    go (Free (Await f)) = wrap $ Await (\x -> liftT (f x) >>= go)
+    go (Free (Yield v k)) = do
         body v
         liftT k >>= go
-
-    go (Free (Await f)) = do
-        v <- await
-        liftT (f v) >>= go
-
-    go (Pure x) = return x
-
-src ~> body = FreeStream.Core.iterate src body
-
--- | Like iterate, but usable in the base monad
-for :: Monad m
-    => Generator a m r
-    -> (a -> m r)
-    -> m r
-for src body = runFreeT src >>= go where
-    go (Free (Yield (v, k))) = do
-        body v
-        runFreeT k >>= go
-
-    go (Free (Await f)) = do
-        v <- runFreeT await
-        runFreeT (f v) >>= go
-
     go (Pure x) = return x
 
 -- | Feed a stream generator into a stream reducer
-(|>) :: Monad m => Generator (Stream b) m r -> Sink (Stream b) m s -> m s
-d |> sink = runFreeT sink >>= go d where
-    go src (Free (Await f)) = do
-        val <- runFreeT src
-        case val of
-            Free (Yield (v, k)) -> do
-                r  <- runFreeT $ f v
-                go k r
+-- | Connect a task to a continuation yielding another task
+(>-) :: Monad m
+     => Task a b m r
+     -> (b -> Task b c m r)
+     -> Task a c m r
+p >- f = liftT p >>= go where
+    go (Pure x) = return x
+    go (Free (Await f')) = wrap $ Await (\a -> (f' a) >- f)
+    go (Free (Yield v k)) = k >< f v
 
-            Pure _ -> runFreeT (f halt) >>= go src
+-- | Compose two tasks in a pull-based stream
+(><) :: Monad m
+     => Task a b m r
+     -> Task b c m r
+     -> Task a c m r
+a >< b = liftT b >>= go where
+    go (Pure x) = return x
+    go (Free (Yield v k)) = wrap $ Yield v $ liftT k >>= go
+    go (Free (Await f)) = a >- f
 
-    go _ (Pure x) = return x
+infixl 3 ><
 
--- | Connect two processes into a new pull-based process
-(+>) :: Monad m
-     => Process x b m r
-     -> Process b c m r
-     -> Process y c m r
-src +> sink = liftT sink >>= go src where
-    go src (Free (Await f)) = do
-        input <- liftT src
-        case input of
-            Pure x -> return x
-
-            Free (Yield (v, k)) -> do
-                output <- liftT $ f v
-                go k output
-
-    go src (Free (Yield (v, k))) = do
-        yield v
-        liftT k >>= go src
-
-    go _ (Pure x)   = return x
+instance (Monad m, Monoid r) => Monoid (Task a b m r) where
+    mempty = return mempty
+    mappend p1 p2 = liftT p1 >>= go where
+        go (Free (Await f))   = wrap $ Await (\a -> liftT (f a) >>= go)
+        go (Free (Yield v k)) = wrap $ Yield v $ liftT k >>= go
+        go (Pure r)           = fmap (mappend r) p2

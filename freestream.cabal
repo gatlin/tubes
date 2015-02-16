@@ -10,7 +10,7 @@ name:                freestream
 -- PVP summary:      +-+------- breaking API changes
 --                   | | +----- non-breaking API additions
 --                   | | | +--- code changes with no API change
-version:             0.1.0.0
+version:             0.2.0.0
 
 -- A short (one-line) description of the package.
 synopsis:            Iteratee-based streams from a free monad
@@ -51,7 +51,7 @@ cabal-version:       >=1.10
 
 library
   -- Modules exported by the library.
-  exposed-modules:     FreeStream, FreeStream.Stream, FreeStream.Core, FreeStream.Util
+  exposed-modules:     FreeStream, FreeStream.Core, FreeStream.Util
   
   -- Modules included in this library but not exported.
   -- other-modules:       
@@ -60,7 +60,7 @@ library
   other-extensions:    DeriveFunctor, StandaloneDeriving, NoMonomorphismRestriction, RankNTypes, ExistentialQuantification, DeriveFoldable, DeriveTraversable
   
   -- Other library packages from which modules are imported.
-  build-depends:       base >=4.6 && <4.7, transformers >=0.3 && <0.4, free >=4.9 && <4.10
+  build-depends:       base >=4.6 , transformers >=0.3, free >=4.9
   
   -- Directories containing source files.
   -- hs-source-dirs:      

@@ -18,9 +18,9 @@
 
 module FreeStream
 
-( ProcessF(..)
-, Process(..)
-, Generator(..)
+( TaskF(..)
+, Task(..)
+, Source(..)
 , Sink(..)
 , Action(..)
 -- * Re-exports
@@ -30,12 +30,10 @@ module FreeStream
 , await
 , yield
 , each
-, FreeStream.Core.iterate
 , FreeStream.Core.for
-, (|>)
-, (+>)
-, (>+)
 , (~>)
+, (>-)
+, (><)
 , run
 , liftT
 -- * Utilities
@@ -45,19 +43,10 @@ module FreeStream
 , FreeStream.Util.take
 , FreeStream.Util.takeWhile
 , FreeStream.Util.filter
-, FreeStream.Util.fold
-, FreeStream.Util.accum
-, (|-)
--- * Stream
-, Stream(..)
-, StreamF(..)
-, chunk
-, recv
-, halt
-, stream
+, FreeStream.Util.reduce
 ) where
 
-import Prelude hiding (map, fold, iterate)
+import Prelude hiding (map, fold, iterate, print, filter)
 import Control.Monad.Trans.Class
 import Control.Monad.Trans.Free
 import Control.Monad.Free
@@ -65,8 +54,21 @@ import Control.Monad (forever, unless, replicateM_, when)
 import Data.Monoid ((<>), mempty, Monoid)
 
 import FreeStream.Core
-import FreeStream.Stream
 import FreeStream.Util
 
-{- | Useful utilities -}
+{- | Example sources and sinks -}
+import System.IO (isEOF)
 
+prompt :: Source String IO ()
+prompt = do
+    lift . putStr $ "> "
+    eof <- lift isEOF
+    unless eof $ do
+        str <- lift getLine
+        yield str
+        prompt
+
+print :: Sink String IO ()
+print = forever $ do
+    it <- await
+    lift . putStrLn $ it
