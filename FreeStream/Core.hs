@@ -1,4 +1,3 @@
-{-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE NoMonomorphismRestriction #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE FlexibleInstances #-}
@@ -30,7 +29,10 @@ import Data.Monoid
 data TaskF a b k
     = Await (a -> k)
     | Yield b k
-    deriving (Functor)
+
+instance Functor (TaskF a b) where
+    fmap f (Await k) = Await $ f . k
+    fmap f (Yield v k) = Yield v $ f k
 
 type Task   a b m r = FreeT  (TaskF a b) m r
 type Source   b m r = forall x. Task x b m r
