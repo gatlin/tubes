@@ -216,10 +216,14 @@ type of one task matches the `await`ing type of the next one.
 More thoughts
 ---
 
-When a value is `yield`ed, it must either be `await`ed in another task or
-captured by a function such as `reduce` and turned into the final result value.
-Calling `yield` then returns an intermediate value requiring some consumer of
-that value to produce the eventual result.
+If a value of type `a` is `yield`ed it must be consumed by some other function
+in order to (eventually) construct the final result of the computation; in a
+word, it needs some `a -> m r`, where `m r` is the monadic result.
+
+`Task` is a monad transformer, so a `Sink` is equivalent to `a -> m r` if you
+take `m` to be `Task a b someOtherMonad r`. Deep inside `reduce` and `run`,
+too, you'll find they ultimately pass `Source` values into continuation
+functions to retrieve the final result.
 
 It may be interesting to look at the definition of `ContT`, the continuation
 monad transformer, in this light:
@@ -229,8 +233,7 @@ newtype ContT r m a = ContT { runContT :: (a -> m r) -> m r }
 ```
 
 A `ContT` computation is one in need of a continuation to complete the
-computation. `Task` emulates this ability to suspend the computation and
-intuitively this makes sense.
+computation, just like a `Task` or `Source`.
 
 It may also be edifying to look at the definition of `StateT`, the monad
 transformer giving a monad access to a mutable state:

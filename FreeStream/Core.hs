@@ -1,9 +1,6 @@
 {-# LANGUAGE DeriveFunctor #-}
-{-# LANGUAGE DeriveFoldable #-}
-{-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE NoMonomorphismRestriction #-}
 {-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE ExistentialQuantification #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FlexibleContexts #-}
 
@@ -33,12 +30,12 @@ import Data.Monoid
 data TaskF a b k
     = Await (a -> k)
     | Yield b k
+    deriving (Functor)
 
-deriving instance Functor (TaskF a b)
-type Task a b m r = FreeT      (TaskF a b) m r
-type Source b m r = forall x. Task x b m r
-type Sink      a   m r = forall x. Task a x m r
-type Action        m r = forall x. Task x x m r
+type Task   a b m r = FreeT  (TaskF a b) m r
+type Source   b m r = forall x. Task x b m r
+type Sink   a   m r = forall x. Task a x m r
+type Action     m r = forall x. Task x x m r
 
 run = runFreeT
 
@@ -52,6 +49,7 @@ await = liftF $ Await id
 yield :: MonadFree (TaskF a b) m => b -> m ()
 yield x = liftF $ Yield x ()
 
+-- | Helper that probably should not be necessary but is anyway.
 liftT = lift . runFreeT
 
 -- | Convert a list to SourceT

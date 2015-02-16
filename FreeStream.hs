@@ -14,10 +14,6 @@
  - could get using free monads.
  -}
 
-{-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE DeriveFunctor #-}
-{-# LANGUAGE FlexibleContexts #-}
-
 module FreeStream
 
 ( TaskF(..)
@@ -52,10 +48,6 @@ module FreeStream
 import Prelude hiding (map, fold, iterate, print, filter)
 import Control.Monad.Trans.Class
 import Control.Monad.Trans.Free
-import Control.Monad (forever, unless, replicateM_, when)
-import Data.Monoid ((<>), mempty, Monoid)
-import Data.Functor.Identity
-import Data.Foldable
 
 import FreeStream.Core
 import FreeStream.Util
