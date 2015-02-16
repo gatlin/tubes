@@ -15,6 +15,8 @@
  -}
 
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE FlexibleContexts #-}
 
 module FreeStream
 
@@ -44,31 +46,17 @@ module FreeStream
 , FreeStream.Util.takeWhile
 , FreeStream.Util.filter
 , FreeStream.Util.reduce
+, FreeStream.Util.iterate
 ) where
 
 import Prelude hiding (map, fold, iterate, print, filter)
 import Control.Monad.Trans.Class
 import Control.Monad.Trans.Free
-import Control.Monad.Free
 import Control.Monad (forever, unless, replicateM_, when)
 import Data.Monoid ((<>), mempty, Monoid)
+import Data.Functor.Identity
+import Data.Foldable
 
 import FreeStream.Core
 import FreeStream.Util
 
-{- | Example sources and sinks -}
-import System.IO (isEOF)
-
-prompt :: Source String IO ()
-prompt = do
-    lift . putStr $ "> "
-    eof <- lift isEOF
-    unless eof $ do
-        str <- lift getLine
-        yield str
-        prompt
-
-print :: Sink String IO ()
-print = forever $ do
-    it <- await
-    lift . putStrLn $ it

@@ -9,11 +9,13 @@ module FreeStream.Util
 , FreeStream.Util.takeWhile
 , FreeStream.Util.filter
 , FreeStream.Util.reduce
+, FreeStream.Util.iterate
 ) where
 
 import Prelude hiding (map, fold, iterate)
 import Control.Monad (forever, unless, replicateM_, when)
 import Data.Monoid ((<>), mempty, Monoid)
+import Data.Foldable
 
 import FreeStream.Core
 import Control.Monad.Trans.Free
@@ -65,4 +67,8 @@ reduce step begin done p0 = runFreeT p0 >>= \p' -> loop p' begin where
     loop p x = case p of
         Free (Yield v k) -> runFreeT k >>= \k' -> loop k' $! step x v
         Pure _           -> return (done x)
+
+-- | Similar to @each@ except it explicitly marks the stream as exhausted
+iterate :: (Foldable t, Monad m) => t b -> Task a (Maybe b) m ()
+iterate xs = (each xs >< map Just) >> yield Nothing
 

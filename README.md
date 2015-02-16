@@ -14,33 +14,162 @@ Synopsis
 
 The following are snippets run in `ghci`.
 
-    >>> run $ for (each [1..4] >< map show) (lift . putStrLn)
-    1
-    2
-    3
-    4
+```haskell
+ghci> run $ for (each [1..4] >< map show) (lift . putStrLn)
+1
+2
+3
+4
+```
 
-    >>> reduce (+) 0 id (each [1..10])
-    55
+```haskell
+ghci> reduce (+) 0 id (each [1..10])
+55
+```
 
-    >>> let echo = prompt >< print
-    >>> run echo
-    > ping
-    ping
-    > pong
-    pong
+We can define a `Source` and a `Sink` for `stdin` and `stdout`, respectively:
 
-    >>> run $ prompt >< filter (/= "Die Antwoord") >< map (++ " sucks") >< print
-    > dubstep
-    dubstep sucks
-    > the sun
-    the sun sucks
-    > Die Antwoord
-    > this program
-    this program sucks
+```haskell
+prompt :: Source String IO ()
+prompt = do
+    lift . putStr $ "> "
+    eof <- lift isEOF
+    unless eof $ do
+        str <- lift getLine
+        yield str
+        prompt
 
-    >>> reduce (++) [] id (each [1..10] >< map (\x -> [x]))
-    [1,2,3,4,5,6,7,8,9,10]
+print :: Sink String IO ()
+print = forever $ do
+    it <- await
+    lift . putStrLn $ it
+```
+
+And write interactive pipelines:
+
+```haskell
+ghci> let echo = prompt >< print
+ghci> run echo
+> ping
+ping
+> pong
+pong
+```
+
+```haskell
+ghci> run $ prompt >< filter (/= "Die Antwoord") >< map (++ " sucks") >< print
+> dubstep
+dubstep sucks
+> the sun
+the sun sucks
+> Die Antwoord
+> this program
+this program sucks
+```
+
+Extended example: Arithmetic parsing
+---
+
+The following is an extended example of tokenizing, parsing, and evaluating
+reverse-Polish notation (RPN) arithmetic expressions, eg
+
+    24 5 + 2 *
+
+First we want to define an abstract syntax tree for arithmetic. This is easy
+enough:
+
+```haskell
+data Arithmetic
+    = Value Int
+    | Add Arithmetic Arithmetic
+    | Mul Arithmetic Arithmetic
+    deriving (Show)
+```
+
+Our example expression in this form is
+
+```
+fifty_eight = Mul (Add (Value 24) (Value 5)) (Value 2)
+```
+
+Evaluating such a tree is straightforward
+
+```haskell
+doArith :: Arithmetic -> Int
+doArith (Value v) = v
+doArith (Add l r) = (doArith l) + (doArith r)
+doArith (Mul l r) = (doArith l) * (doArith r)
+```
+
+But how do we convert `24 5 + 2 *` into `Mul (Add (Value 24) (Value 5)) (Value
+2)`?
+
+First we should tokenize the input; in this case, break the string up by
+spaces. A token is either a `String` of data or a null-value to signify the
+end of the input. So let's make a convenient type alias:
+
+```haskell
+type Token = Maybe String
+```
+
+Our `tokenize` function will receive a stream of `Maybe Char` and will
+periodically yield a `Token`.
+
+```haskell
+tokenize :: Monad m => Task (Maybe Char) Token m ()
+tokenize = loop "" where
+    loop acc = do
+        token <- await
+        case token of
+            Nothing -> yield (Just acc) >> yield Nothing
+            Just  t -> case t of
+                ' ' -> (yield (Just acc)) >> loop ""
+                _   -> loop $ acc ++ [t]
+```
+
+So now we can split up `24 5 + 2 *` into `"24" "5" "+" "2" "*"`. The next step
+is producing an `Arithmetic` expression. This library already provides a
+function, `reduce`, which reduces a stream of values into a single result.
+
+```haskell
+parseArith :: Monad m => Source Token m () -> m Int
+parseArith = reduce step [] (doArith . head) where
+    step stack token = case token of
+        Just t  -> case t of
+            "+" -> buildBranch (Add) stack
+            "*" -> buildBranch (Mul) stack
+            ""  -> stack
+            _   -> (Value (read t)):stack
+        Nothing -> stack
+
+    buildBranch con stack = do
+        if length stack < 2oken
+            then stack
+            else
+                let (r:l:rest) = stack
+                    ret        = con l r
+                 in (ret:rest)
+```
+
+Note the cases for the different possible tokens. `"+"`, `"*"`, or an integer of
+some kind all manipulate the expression stack in some way. An empty string,
+though, leaves the stack completely untouched - in essence, it is ignored.
+
+The final step is feeding an input string into this pipeline. This library also
+provides `iterate` for breaking a `Foldable` of input into a series of `Maybe`
+values.
+
+```haskell
+compute :: Monad m => String -> m Int
+compute x = parseArith $ iterate x >< chunk
+```
+
+In `ghci`, then, I can use my fancy new RPN calculator:
+
+```haskell
+ghci> compute "24   5 + 2   *"
+58
+```
 
 Explanation
 ---
