@@ -1,4 +1,4 @@
-{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE Rank2Types #-}
 
 module FreeStream.Util
 
@@ -14,11 +14,11 @@ module FreeStream.Util
 
 import Prelude hiding (map, iterate)
 import Control.Monad (forever, unless, replicateM_, when)
-import Data.Monoid ((<>), mempty, Monoid)
+import Control.Monad.Trans.Free
 import Data.Foldable
+import Data.Monoid (Monoid, mappend, mempty)
 
 import FreeStream.Core
-import Control.Monad.Trans.Free
 
 -- | Continuously relays any values it receives. Iteratee identity.
 cat :: Monad m => Task a a m r
@@ -69,4 +69,3 @@ reduce step begin done p0 = runFreeT p0 >>= \p' -> loop p' begin where
 -- | Similar to @each@ except it explicitly marks the stream as exhausted
 iterate :: (Foldable t, Monad m) => t b -> Task a (Maybe b) m ()
 iterate xs = (each xs >< map Just) >> yield Nothing
-
