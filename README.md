@@ -143,7 +143,7 @@ parseArith = reduce step [] (doArith . head) where
         Nothing -> stack
 
     buildBranch con stack =
-        if length stack < token
+        if length stack < 2
             then stack
             else
                 let (r:l:rest) = stack
