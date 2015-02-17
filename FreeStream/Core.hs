@@ -26,12 +26,12 @@ import Control.Monad.Trans.Free
 import Data.Foldable
 
 {- |
- - @TaskF@ is the union of unary functions and binary products into a single
- - type. The value constructors may be misleading in this regard but they are
- - suggestive of the roles these two types will play in stream processing.
- -
- - Free monads and free monad transformers may be derived from functions and
- - tuples.
+   @TaskF@ is the union of unary functions and binary products into a single
+   type. The value constructors may be misleading in this regard but they are
+   suggestive of the roles these two types will play in stream processing.
+
+   Free monads and free monad transformers may be derived from functions and
+   tuples.
  -}
 data TaskF a b k
     = Await (a -> k)
@@ -85,7 +85,7 @@ for src body = liftT src >>= go where
 -- | Infix @for@.
 src ~> body = FreeStream.Core.for src body
 
--- | Connect a task to a continuation yielding another task; see @(><)@
+-- | Connect a task to a continuation yielding another task; see '><'
 (>-) :: Monad m
      => Task a b m r
      -> (b -> Task b c m r)

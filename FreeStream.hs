@@ -1,17 +1,17 @@
 {- |
- - Iteratee-inspired streaming library.
- -
- - (c) 2014, Gatlin Johnson <gatlin@niltag.net>
- -
- - This exists primarily for my own education. It is updated often as I try
- - things and is probably, at this moment, wrong.
- -
- - If you want to know more about iteratees:
- -
- -     http://okmij.org/ftp/Streams.html
- -
- - My goals were to (1) learn more about iteratees and (2) see how far I
- - could get using free monads.
+Iteratee-inspired streaming library.
+
+(c) 2014, Gatlin Johnson <gatlin@niltag.net>
+
+This exists primarily for my own education. It is updated often as I try
+things and is probably, at this moment, wrong.
+
+If you want to know more about iteratees:
+
+    http://okmij.org/ftp/Streams.html
+
+My goals were to (1) learn more about iteratees and (2) see how far I
+could get using free monads.
  -}
 
 module FreeStream
