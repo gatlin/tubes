@@ -12,7 +12,7 @@ module FreeStream.Util
 , FreeStream.Util.iterate
 ) where
 
-import Prelude hiding (map, fold, iterate)
+import Prelude hiding (map, iterate)
 import Control.Monad (forever, unless, replicateM_, when)
 import Data.Monoid ((<>), mempty, Monoid)
 import Data.Foldable
@@ -25,7 +25,6 @@ cat :: Monad m => Task a a m r
 cat = forever $ do
     x <- await
     yield x
-
 
 -- | Transforms all incoming values according to some function.
 map :: (Monad m) => (a -> b) -> Task a b m r
@@ -60,8 +59,7 @@ take n = do
         x <- await
         yield x
 
--- | Fold a Stream of values
--- | Strict left fold of a Source
+-- | Strict left fold of a stream.
 reduce :: Monad m => (x -> a -> x) -> x -> (x -> b) -> Source a m () -> m b
 reduce step begin done p0 = runFreeT p0 >>= \p' -> loop p' begin where
     loop p x = case p of
