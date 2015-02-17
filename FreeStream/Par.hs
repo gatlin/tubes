@@ -8,15 +8,13 @@ module FreeStream.Par
 
 where
 
-import Prelude hiding (map, print, mapM_)
+import Prelude hiding (map)
 
 import FreeStream.Core
 import FreeStream.Util
 
 import Data.Foldable
 import Control.Monad.Trans.Class
-import Control.Monad (forever, unless)
-import System.IO (isEOF)
 
 broadcast :: (Functor f, Monad m)
           =>     Task a b m r
