@@ -57,7 +57,7 @@ library
   -- other-modules:       
   
   -- LANGUAGE extensions used by modules in this package.
-  other-extensions:    NoMonomorphismRestriction, RankNTypes,
+  other-extensions:    NoMonomorphismRestriction, Rank2Types,
                        FlexibleInstances, FlexibleContexts
   
   -- Other library packages from which modules are imported.
