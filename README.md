@@ -96,7 +96,7 @@ task:
 
 ```haskell
 obvious :: Monad m => Task String String m ()
-obvious = forever $ await >>= \x -> yield (x ++ " is a number")
+obvious = cat >< map (++ " is a number")
 ```
 
 We can split and merge streams like so:
