@@ -51,7 +51,8 @@ cabal-version:       >=1.10
 
 library
   -- Modules exported by the library.
-  exposed-modules:     FreeStream, FreeStream.Core, FreeStream.Util
+  exposed-modules:     FreeStream, FreeStream.Core, FreeStream.Util,
+                       FreeStream.Par
   
   -- Modules included in this library but not exported.
   -- other-modules:       

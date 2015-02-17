@@ -51,4 +51,5 @@ import Control.Monad.Trans.Free
 
 import FreeStream.Core
 import FreeStream.Util
+import FreeStream.Par
 

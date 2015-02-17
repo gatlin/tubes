@@ -67,6 +67,53 @@ the sun sucks
 this program sucks
 ```
 
+Parallelism
+---
+
+For this example we have a source of `Int` values
+
+```haskell
+nums :: Monad m => Source Int m ()
+nums = each [1,2,3]
+```
+
+and some tasks which transform `Int`s:
+
+```haskell
+doubleIt :: Monad m => Task Int String m ()
+doubleIt = forever $ do
+    n <- await
+    yield . show $ n * 2
+
+squareIt :: Monad m => Task Int String m ()
+squareIt = forever $ do
+    n <- await
+    yield . show $ n * n
+```
+
+And, just to make things a little more interesting, some super-important final
+task:
+
+```haskell
+obvious :: Monad m => Task String String m ()
+obvious = forever $ await >>= \x -> yield (x ++ " is a number")
+```
+
+We can split and merge streams like so:
+
+```haskell
+ghci> run $ nums *< [ squareIt, doubleIt ] >* obvious >< print
+1 is a number
+4 is a number
+9 is a number
+2 is a number
+4 is a number
+6 is a number
+```
+
+This is primitive at the moment but it will work for any `Functor`, which is
+pretty exciting.
+
 Extended example: Arithmetic parsing
 ---
 

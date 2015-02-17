@@ -1,43 +1,45 @@
 module FreeStream.Par
 
+( broadcast
+, merge
+, (*<)
+, (>*)
+)
+
 where
+
+import Prelude hiding (map, print, mapM_)
 
 import FreeStream.Core
 import FreeStream.Util
 
+import Data.Foldable
 import Control.Monad.Trans.Class
 import Control.Monad (forever, unless)
 import System.IO (isEOF)
 
-{-
- - Experiments with Orc primitives - broadcasting values to multiple tasks and
- - collecting the results into a new source
- -}
+broadcast :: (Functor f, Monad m)
+          =>     Task a b m r
+          -> f ( Task b c m r )
+          -> f ( Task a c m r )
+broadcast src tsks = fmap (\t -> src >< t) tsks
 
--- | A fun source
-prompt :: Source String IO ()
-prompt = do
-    lift . putStr $ "> "
-    eof <- lift isEOF
-    unless eof $ do
-        str <- lift getLine
-        yield str
-        prompt
+(*<) :: (Functor f, Monad m)
+     =>     Task a b m r
+     -> f ( Task b c m r )
+     -> f ( Task a c m r )
+(*<) = broadcast
+infixl 9 *<
 
--- | A fun sink
-print :: Sink String IO ()
-print = forever $ do
-    it <- await
-    lift . putStrLn $ it
+merge :: ( Foldable t, Monad m )
+      => t ( Task a c m s )
+      -> Task a c m ()
+merge tasks = for (each tasks) (\t -> for t yield)
 
--- Some arbitrary tasks
-insult :: Monad m => Task String String m ()
-insult = forever $ do
-    thing <- await
-    yield $ thing ++ " sucks"
-
-compliment :: Monad m => Task String String m ()
-compliment = forever $ do
-    thing <- await
-    yield $ thing ++ " rocks"
+(>*) :: (Foldable t, Monad m)
+     => t ( Task a b m s )
+     ->     Task b c m ()
+     ->     Task a c m ()
+tasks >* k = (merge tasks) >< k
+infixr 0 >*
 
