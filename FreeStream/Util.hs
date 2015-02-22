@@ -10,13 +10,17 @@ module FreeStream.Util
 , FreeStream.Util.filter
 , FreeStream.Util.reduce
 , FreeStream.Util.iterate
+, FreeStream.Util.prompt
+, FreeStream.Util.display
 ) where
 
 import Prelude hiding (map, iterate)
 import Control.Monad (forever, unless, replicateM_, when)
+import Control.Monad.Trans
 import Control.Monad.Trans.Free
 import Data.Foldable
 import Data.Monoid (Monoid, mappend, mempty)
+import System.IO
 
 import FreeStream.Core
 
@@ -69,3 +73,17 @@ reduce step begin done p0 = runFreeT p0 >>= \p' -> loop p' begin where
 -- | Similar to 'each' except it explicitly marks the stream as exhausted
 iterate :: (Foldable t, Monad m) => t b -> Task a (Maybe b) m ()
 iterate xs = (each xs >< map Just) >> yield Nothing
+
+prompt :: Source String IO ()
+prompt = do
+    lift . putStr $ "> "
+    eof <- lift isEOF
+    unless eof $ do
+        str <- lift getLine
+        yield str
+        prompt
+
+display :: Sink String IO ()
+display = forever $ do
+    it <- await
+    lift . putStrLn $ it

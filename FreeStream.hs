@@ -1,3 +1,5 @@
+{-# LANGUAGE FlexibleContexts #-}
+
 {- |
 Iteratee-inspired streaming library.
 
@@ -52,4 +54,6 @@ import Control.Monad.Trans.Free
 import FreeStream.Core
 import FreeStream.Util
 import FreeStream.Par
+
+import Control.Monad
 

@@ -62,7 +62,7 @@ library
                        FlexibleInstances, FlexibleContexts
   
   -- Other library packages from which modules are imported.
-  build-depends:       base >=4.6 , transformers >=0.3, free >=4.9
+  build-depends:       base >=4.6 , transformers >=0.3, free >=4.9, mtl
   
   -- Directories containing source files.
   -- hs-source-dirs:      
