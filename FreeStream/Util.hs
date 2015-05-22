@@ -28,6 +28,8 @@ import FreeStream.Core
 fix :: (a -> a) -> a
 fix f = let x = f x in x
 
+-- | Used in the case of a specialized 'Task' type and we know for certain a
+-- particular case will never actually be called.
 diverge :: a
 diverge = fix id
 
