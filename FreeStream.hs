@@ -1,9 +1,7 @@
-{-# LANGUAGE FlexibleContexts #-}
-
 {- |
 Iteratee-inspired streaming library.
 
-(c) 2014, Gatlin Johnson <gatlin@niltag.net>
+(c) 2014, 2015 Gatlin Johnson <gatlin@niltag.net>
 
 This exists primarily for my own education. It is updated often as I try
 things and is probably, at this moment, wrong.

@@ -54,9 +54,15 @@ yieldF x k = TaskF $ \_ y -> y (x, k)
 -- | A @Task@ is the free monad transformer arising from @TaskF@.
 type Task   a b m r = FreeT  (TaskF a b) m r
 
--- | Type aliases for safety and clarity in client code.
+-- ** Type aliases
+
+-- | A computation which only @yield@s and never @await@s
 type Source   b m r = forall x. Task x b m r
+
+-- | A computation which only @await@s and never @yield@s
 type Sink   a   m r = forall x. Task a x m r
+
+-- | A computation which neither @yield@s nor @await@s
 type Action     m r = forall x. Task x x m r
 
 -- | Simple utilities that make writing this library easier
@@ -115,7 +121,7 @@ for src body = liftT src >>= go where
                 body v
                 liftT k >>= go)
 
--- | Infix version of @for@
+-- | Infix version of 'for'
 (~>) :: Monad m
      => Task a b m r
      -> (b -> Task a c m s)
