@@ -2,6 +2,7 @@
 {-# LANGUAGE Rank2Types #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE DeriveFunctor #-}
 
 module FreeStream.Core
 
@@ -21,8 +22,10 @@ module FreeStream.Core
 , (~>)
 ) where
 
-import Control.Monad.Trans.Class
+import Control.Monad
+import Control.Monad.Trans
 import Control.Monad.Trans.Free
+import Control.Monad.Trans.Free.Church
 import Data.Foldable
 
 {- |
@@ -33,14 +36,20 @@ import Data.Foldable
    Free monads and free monad transformers may be derived from functions and
    tuples.
  -}
-data TaskF a b k
-    = Await (a -> k)
-    | Yield b k
+newtype TaskF a b k = TaskF {
+    runT :: forall r.
+             ((a -> k) -> r)
+         ->  ((b,   k) -> r)
+         ->  r
+} deriving (Functor)
 
--- | These are just function and tuple @Functor@ instances, suitably tagged.
-instance Functor (TaskF a b) where
-    fmap f (Await k) = Await $ f . k
-    fmap f (Yield v k) = Yield v $ f k
+-- | Constructor for sink computations
+awaitF :: (a -> k) -> TaskF a b k
+awaitF f = TaskF $ \a _ -> a f
+
+-- | Constructor for source computations
+yieldF :: b -> k -> TaskF a b k
+yieldF x k = TaskF $ \_ y -> y (x, k)
 
 -- | A @Task@ is the free monad transformer arising from @TaskF@.
 type Task   a b m r = FreeT  (TaskF a b) m r
@@ -50,40 +59,26 @@ type Source   b m r = forall x. Task x b m r
 type Sink   a   m r = forall x. Task a x m r
 type Action     m r = forall x. Task x x m r
 
--- | Convenience and readability alias.
+-- | Simple utilities that make writing this library easier
+liftT :: (MonadTrans t, Monad m)
+      => FreeT f m a
+      -> t m (FreeF f a (FreeT f m a))
+liftT = lift . runFreeT
+
+-- | 'run' is shorter than 'runFreeT' and who knows, maybe it'll change some
+-- day
+run :: FreeT f m a -> m (FreeF f a (FreeT f m a))
 run = runFreeT
 
 {- ** Basic Task infrastructure -}
 
--- | Command used by iteratees to receive an upstream value.
-await :: MonadFree (TaskF a b) m => m a
-await = liftF $ Await id
+-- | Command to wait for a new value upstream
+await :: Monad m => Task a b m a
+await = improveT $ liftF $ awaitF id
 
--- | Command used by iteratees to yield a value downstream.
-yield :: MonadFree (TaskF a b) m => b -> m ()
-yield x = liftF $ Yield x ()
-
--- | Helper that probably should not be necessary but is anyway.
-liftT = lift . runFreeT
-
--- | Convert a list to SourceT
-each :: (Monad m, Foldable t) => t b -> Task a b m ()
-each as = Data.Foldable.mapM_ yield as
-
--- | Enumerate @yield@ed values into a continuation, creating a new @Source@.
-for :: Monad m
-    => Task a b m r
-    -> (b -> Task a c m s)
-    -> Task a c m r
-for src body = liftT src >>= go where
-    go (Free (Await f)) = wrap $ Await (\x -> liftT (f x) >>= go)
-    go (Free (Yield v k)) = do
-        body v
-        liftT k >>= go
-    go (Pure x) = return x
-
--- | Infix @for@.
-src ~> body = FreeStream.Core.for src body
+-- | Command to send a value downstream
+yield :: Monad m => b -> Task a b m ()
+yield x = improveT $ liftF $ yieldF x ()
 
 -- | Connect a task to a continuation yielding another task; see '><'
 (>-) :: Monad m
@@ -92,8 +87,8 @@ src ~> body = FreeStream.Core.for src body
      -> Task a c m r
 p >- f = liftT p >>= go where
     go (Pure x) = return x
-    go (Free (Await f')) = wrap $ Await (\a -> (f' a) >- f)
-    go (Free (Yield v k)) = k >< f v
+    go (Free p') = runT p' (\f' -> wrap $ awaitF (\a -> (f' a) >- f))
+                           (\(v, k) -> k >< f v)
 
 -- | Compose two tasks in a pull-based stream
 (><) :: Monad m
@@ -102,8 +97,27 @@ p >- f = liftT p >>= go where
      -> Task a c m r
 a >< b = liftT b >>= go where
     go (Pure x) = return x
-    go (Free (Yield v k)) = wrap $ Yield v $ liftT k >>= go
-    go (Free (Await f)) = a >- f
+    go (Free b') = runT b' (\f -> a >- f)
+                           (\(v, k) -> wrap $ yieldF v $ liftT k >>= go)
 
 infixl 3 ><
+
+-- | Enumerate @yield@ed values into a continuation, creating a new @Source@
+for :: Monad m
+    => Task a b m r
+    -> (b -> Task a c m s)
+    -> Task a c m r
+for src body = liftT src >>= go where
+        go (Pure x) = return x
+        go (Free src') = runT src'
+            (\f -> wrap $ awaitF (\x -> liftT (f x) >>= go))
+            (\(v, k) -> do
+                body v
+                liftT k >>= go)
+
+(~>) = for
+
+-- | Convert a list to a 'Source'
+each :: (Monad m, Foldable t) => t b -> Task a b m ()
+each as = Data.Foldable.mapM_ yield as
 

@@ -44,10 +44,11 @@ module FreeStream
 , FreeStream.Util.takeWhile
 , FreeStream.Util.filter
 , FreeStream.Util.reduce
-, FreeStream.Util.iterate
+, FreeStream.Util.every
+, FreeStream.Util.unyield
 ) where
 
-import Prelude hiding (map, fold, iterate, print, filter)
+import Prelude hiding (map, fold, print, filter)
 import Control.Monad.Trans.Class
 import Control.Monad.Trans.Free
 

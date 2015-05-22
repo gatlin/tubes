@@ -10,7 +10,7 @@ name:                freestream
 -- PVP summary:      +-+------- breaking API changes
 --                   | | +----- non-breaking API additions
 --                   | | | +--- code changes with no API change
-version:             0.2.0.0
+version:             0.3.0.0
 
 -- A short (one-line) description of the package.
 synopsis:            Iteratee-based streams from a free monad
@@ -59,10 +59,10 @@ library
   
   -- LANGUAGE extensions used by modules in this package.
   other-extensions:    NoMonomorphismRestriction, Rank2Types,
-                       FlexibleInstances, FlexibleContexts
+                       FlexibleInstances, FlexibleContexts, DeriveFunctor
   
   -- Other library packages from which modules are imported.
-  build-depends:       base >=4.6 , transformers >=0.3, free >=4.9, mtl
+  build-depends:       base >=4.6 , transformers >=0.3, free >=4.12, mtl
   
   -- Directories containing source files.
   -- hs-source-dirs:      

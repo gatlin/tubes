@@ -9,12 +9,13 @@ module FreeStream.Util
 , FreeStream.Util.takeWhile
 , FreeStream.Util.filter
 , FreeStream.Util.reduce
-, FreeStream.Util.iterate
+, FreeStream.Util.every
 , FreeStream.Util.prompt
 , FreeStream.Util.display
+, FreeStream.Util.unyield
 ) where
 
-import Prelude hiding (map, iterate)
+import Prelude hiding (map)
 import Control.Monad (forever, unless, replicateM_, when)
 import Control.Monad.Trans
 import Control.Monad.Trans.Free
@@ -23,6 +24,12 @@ import Data.Monoid (Monoid, mappend, mempty)
 import System.IO
 
 import FreeStream.Core
+
+fix :: (a -> a) -> a
+fix f = let x = f x in x
+
+diverge :: a
+diverge = fix id
 
 -- | Continuously relays any values it receives. Iteratee identity.
 cat :: Monad m => Task a a m r
@@ -63,16 +70,31 @@ take n = do
         x <- await
         yield x
 
--- | Strict left fold of a stream.
-reduce :: Monad m => (x -> a -> x) -> x -> (x -> b) -> Source a m () -> m b
+-- | Taps the next value from a source.
+unyield :: Monad m => Source b m () -> m (Maybe b)
+unyield tsk = do
+    tsk' <- runFreeT tsk
+    case tsk' of
+        Pure _      -> return Nothing
+        Free tsk''  -> do
+            let res = runT tsk'' diverge (\(v, _) -> Just v)
+            return res
+
+-- | Strict left-fold of a stream
+reduce :: Monad m
+       => (x -> a -> x) -- ^ step function
+       -> x             -- ^ initial value
+       -> (x -> b)      -- ^ final transformation
+       -> Source a m () -- ^ stream source
+       -> m b
 reduce step begin done p0 = runFreeT p0 >>= \p' -> loop p' begin where
-    loop p x = case p of
-        Free (Yield v k) -> runFreeT k >>= \k' -> loop k' $! step x v
-        Pure _           -> return (done x)
+    loop (Pure _) x = return (done x)
+    loop (Free p) x = runT p diverge (\(v, k) ->
+        runFreeT k >>= \k' -> loop k' $! step x v)
 
 -- | Similar to 'each' except it explicitly marks the stream as exhausted
-iterate :: (Foldable t, Monad m) => t b -> Task a (Maybe b) m ()
-iterate xs = (each xs >< map Just) >> yield Nothing
+every :: (Foldable t, Monad m) => t b -> Task a (Maybe b) m ()
+every xs = (each xs >< map Just) >> yield Nothing
 
 prompt :: Source String IO ()
 prompt = do
