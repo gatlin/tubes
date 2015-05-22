@@ -115,6 +115,11 @@ for src body = liftT src >>= go where
                 body v
                 liftT k >>= go)
 
+-- | Infix version of @for@
+(~>) :: Monad m
+     => Task a b m r
+     -> (b -> Task a c m s)
+     -> Task a c m r
 (~>) = for
 
 -- | Convert a list to a 'Source'
