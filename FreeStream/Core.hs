@@ -30,11 +30,14 @@ import Data.Foldable
 
 {- |
    @TaskF@ is the union of unary functions and binary products into a single
-   type. The value constructors may be misleading in this regard but they are
-   suggestive of the roles these two types will play in stream processing.
+   type, here defined with a Boehm-Berarducci encoding. The value constructor
+   functions are 'awaitF' and 'yieldF'.
 
-   Free monads and free monad transformers may be derived from functions and
-   tuples.
+   Rather than using a normal ADT, which would certainly make the code a bit
+   easier to read and write, a value of this type is actually a control flow
+   mechanism accepting two continuations and choosing one or the other.
+
+   Client code should never actually have to deal with this.
  -}
 newtype TaskF a b k = TaskF {
     runT :: forall r.
