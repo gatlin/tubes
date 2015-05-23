@@ -13,7 +13,9 @@ name:                freestream
 version:             0.3.0.0
 
 -- A short (one-line) description of the package.
-synopsis:            Iteratee-based streams from a free monad
+synopsis:            Effectful, iteratee-inspired stream processing based on a
+free monad. More information is available here:
+https://github.com/gatlin/FreeStream.
 
 -- A longer description of the package.
 -- description:         
