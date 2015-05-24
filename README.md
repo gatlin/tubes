@@ -33,6 +33,8 @@ ghci> reduce (+) 0 id (each [1..10])
 We can define a `Source` and a `Sink` for `stdin` and `stdout`, respectively:
 
 ```haskell
+
+-- these are both defined in `FreeStream.Util`
 prompt :: Source String IO ()
 prompt = do
     lift . putStr $ "> "
@@ -42,8 +44,8 @@ prompt = do
         yield str
         prompt
 
-print :: Sink String IO ()
-print = forever $ do
+display :: Sink String IO ()
+display = forever $ do
     it <- await
     lift . putStrLn $ it
 ```
@@ -51,7 +53,7 @@ print = forever $ do
 And write interactive pipelines:
 
 ```haskell
-ghci> let echo = prompt >< print
+ghci> let echo = prompt >< display
 ghci> run echo
 > ping
 ping
@@ -60,7 +62,7 @@ pong
 ```
 
 ```haskell
-ghci> run $ prompt >< filter (/= "Die Antwoord") >< map (++ " sucks") >< print
+ghci> run $ prompt >< filter (/= "Die Antwoord") >< map (++ " sucks") >< display
 > dubstep
 dubstep sucks
 > the sun
@@ -107,7 +109,7 @@ obvious = cat >< map (++ " is a number")
 We can split and merge streams like so:
 
 ```haskell
-ghci> run $ nums *< [ squareIt, doubleIt ] >* obvious >< print
+ghci> run $ nums *< [ squareIt, doubleIt ] >* obvious >< display
 1 is a number
 4 is a number
 9 is a number

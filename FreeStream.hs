@@ -48,6 +48,8 @@ module FreeStream
 , FreeStream.Util.reduce
 , FreeStream.Util.every
 , FreeStream.Util.unyield
+, FreeStream.Util.prompt
+, FreeStream.Util.display
 ) where
 
 import Prelude hiding (map, fold, print, filter)
