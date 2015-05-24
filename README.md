@@ -70,8 +70,10 @@ the sun sucks
 this program sucks
 ```
 
-Parallelism
+Parallelism and Concurrency
 ---
+
+**This is incomplete but worth bringing up.**
 
 For this example we have a source of `Int` values
 
@@ -114,8 +116,8 @@ ghci> run $ nums *< [ squareIt, doubleIt ] >* obvious >< print
 6 is a number
 ```
 
-This is primitive at the moment but it will work for any `Functor`, which is
-pretty exciting.
+This is primitive at the moment but it will work for any `Functor`, such as
+those which `fmap` in parallel or concurrently. I think this is exciting.
 
 Extended example: Arithmetic parsing
 ---
