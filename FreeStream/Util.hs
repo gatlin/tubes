@@ -1,5 +1,15 @@
 {-# LANGUAGE Rank2Types #-}
 
+{-
+Module          : FreeStream.Util
+Description     : Optional stream processing utilities
+Copyright       : (c) 2014, 2015 Gatlin Johnson <gatlin@niltag.net>
+
+License         : LGPL-3
+Maintainer      : gatlin@niltag.net
+Stability       : experimental
+-}
+
 module FreeStream.Util
 
 ( cat
