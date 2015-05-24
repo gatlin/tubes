@@ -43,7 +43,7 @@ cat = forever $ do
 map :: (Monad m) => (a -> b) -> Task a b m r
 map f = for cat $ \x -> yield (f x)
 
--- | Refuses to yield the first `n` values it receives.
+-- | Refuses to yield the first @n@ values it receives.
 drop :: Monad m => Int -> Task a a m r
 drop n = do
     replicateM_ n await
@@ -65,7 +65,7 @@ takeWhile pred = go
                     go
             else return ()
 
--- | Relay only the first `n` elements of a stream.
+-- | Relay only the first @n@ elements of a stream.
 take :: Monad m => Int -> Task a a m ()
 take n = do
     replicateM_ n $ do

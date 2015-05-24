@@ -29,9 +29,8 @@ import Control.Monad.Trans.Free.Church
 import Data.Foldable
 
 {- |
-   @TaskF@ is the union of unary functions and binary products into a single
-   type, here defined with a Boehm-Berarducci encoding. The value constructor
-   functions are 'awaitF' and 'yieldF'.
+   'TaskF' is the union of unary functions and binary products into a single
+   type, here defined with a Boehm-Berarducci encoding.
 
    Rather than using a normal ADT, which would certainly make the code a bit
    easier to read and write, a value of this type is actually a control flow
@@ -54,27 +53,36 @@ awaitF f = TaskF $ \a _ -> a f
 yieldF :: b -> k -> TaskF a b k
 yieldF x k = TaskF $ \_ y -> y (x, k)
 
--- | A @Task@ is the free monad transformer arising from @TaskF@.
+-- | A 'Task' is the free monad transformer arising from 'TaskF'.
 type Task   a b m r = FreeT  (TaskF a b) m r
 
 -- ** Type aliases
 
--- | A computation which only @yield@s and never @await@s
+-- | A computation which only 'yield's and never 'await's
 type Source   b m r = forall x. Task x b m r
 
--- | A computation which only @await@s and never @yield@s
+-- | A computation which only 'await's and never 'yield's
 type Sink   a   m r = forall x. Task a x m r
 
--- | A computation which neither @yield@s nor @await@s
+-- | A computation which neither 'yield's nor 'await's
 type Action     m r = forall x. Task x x m r
 
--- | Simple utilities that make writing this library easier
+{- |
+This performs a neat trick: a 'Task' with a return type @a@ will be
+turned into a new 'Task' containing the underlying 'TaskF' value.
+
+
+In this way the '><' and '>-' functions can replace the @()@ return value with
+a continuation and recursively traverse the computation until a final result
+is reached.
+-}
+
 liftT :: (MonadTrans t, Monad m)
       => FreeT f m a
       -> t m (FreeF f a (FreeT f m a))
 liftT = lift . runFreeT
 
--- | 'run' is shorter than 'runFreeT' and who knows, maybe it'll change some
+-- | 'run' is shorter than 'runFreeT' and who knows, maybe it\'ll change some
 -- day
 run :: FreeT f m a -> m (FreeF f a (FreeT f m a))
 run = runFreeT
@@ -111,7 +119,7 @@ a >< b = liftT b >>= go where
 
 infixl 3 ><
 
--- | Enumerate @yield@ed values into a continuation, creating a new @Source@
+-- | Enumerate 'yield'ed values into a continuation, creating a new 'Source'
 for :: Monad m
     => Task a b m r
     -> (b -> Task a c m s)
