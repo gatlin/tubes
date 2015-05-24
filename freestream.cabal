@@ -20,8 +20,22 @@ synopsis:            Effectful, iteratee-inspired stream processing based on a
 description:
     This package provides the @Task@ monad transformer, allowing any monad
     computation to become a stream processing pipeline. A computation of type
-    @Task a b m r@ consumes values of type 'a' and produces values of type
-    'b'.
+    'Task' @a b m r@ consumes values of type @a@ and produces values of type
+    @b@.
+    .
+    An example (in ghci):
+    .
+    >>> run $ for (each [1..10]) $ lift . putStrLn . show
+    .
+    This example will print the numbers 1 through 10 on a separate line.
+    .
+    >>> reduce (*) 1 id $ each [1..10]
+    .
+    This produces 3628800, quickly. See the 'FreeStream' module documentation
+    for information on each type and function.
+    .
+    To use this library you need only to import 'FreeStream'. The other
+    modules are exported for convenience.
     .
     Examples and more information may be found at
     <https://github.com/gatlin/FreeStream>.

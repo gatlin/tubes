@@ -1,6 +1,6 @@
 {- |
 Module          : FreeStream
-Description     : Iteratee-inspired streaming library.
+Description     : All-encompassing module.
 Copyright       : (c) 2014, 2015 Gatlin Johnson <gatlin@niltag.net>
 
 License         : GPL-3
