@@ -21,7 +21,8 @@ description:
     This package provides the @Task@ monad transformer, allowing any monad
     computation to become a stream processing pipeline. A computation of type
     'Task' @a b m r@ consumes values of type @a@ and produces values of type
-    @b@.
+    @b@. Any 'Foldable' type may be used as an argument to functions like
+    'each' and 'every'.
     .
     An example (in ghci):
     .
