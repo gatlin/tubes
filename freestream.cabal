@@ -35,6 +35,11 @@ description:
     This produces 3628800, quickly. See the 'FreeStream' module documentation
     for information on each type and function.
     .
+    You can also connect stream processing combinators - either from this
+    library or of your own design - using the '><' operator:
+    .
+    >>> run $ prompt >< filter (/= "haskell") >< map (++ " is awful") >< display
+    .
     To use this library you need only to import 'FreeStream'. The other
     modules are exported for convenience.
     .
