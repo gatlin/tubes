@@ -1,9 +1,3 @@
-{-# LANGUAGE NoMonomorphismRestriction #-}
-{-# LANGUAGE Rank2Types #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE DeriveFunctor #-}
-
 {-
 Module          : FreeStream.Core
 Description     : Fundamental types and operations.
@@ -13,6 +7,12 @@ License         : LGPL-3
 Maintainer      : gatlin@niltag.net
 Stability       : experimental
 -}
+
+{-# LANGUAGE NoMonomorphismRestriction #-}
+{-# LANGUAGE Rank2Types #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE DeriveFunctor #-}
 
 module FreeStream.Core
 
