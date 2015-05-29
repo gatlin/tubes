@@ -8,7 +8,7 @@ you can derive automatically by combining the two.
 If this library also happens to be useful to anyone, even better.
 
 Haddock documentation is available at
-[http://niltag.net/Tubes](http://niltag.net/Tubes).
+[http://niltag.net/Tubes](http://niltag.net/FreeStream).
 
 (c) 2014, 2015 Gatlin Johnson <gatlin@niltag.net>
 
