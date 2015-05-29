@@ -1,4 +1,4 @@
-FreeStream
+Tubes
 ==========
 
 [Iteratee][iteratees]-based streaming library from a free monad. This exists
@@ -8,9 +8,12 @@ you can derive automatically by combining the two.
 If this library also happens to be useful to anyone, even better.
 
 Haddock documentation is available at
-[http://niltag.net/FreeStream](http://niltag.net/FreeStream).
+[http://niltag.net/Tubes](http://niltag.net/Tubes).
 
 (c) 2014, 2015 Gatlin Johnson <gatlin@niltag.net>
+
+**I JUST CHANGED THE NAME OF THIS PACKAGE. EVERYTHING BUILDS but the
+documentation and such might not be completely changed**
 
 Synopsis
 ---
@@ -33,8 +36,6 @@ ghci> reduce (+) 0 id (each [1..10])
 We can define a `Source` and a `Sink` for `stdin` and `stdout`, respectively:
 
 ```haskell
-
--- these are both defined in `FreeStream.Util`
 prompt :: Source String IO ()
 prompt = do
     lift . putStr $ "> "
@@ -44,8 +45,8 @@ prompt = do
         yield str
         prompt
 
-display :: Sink String IO ()
-display = forever $ do
+print :: Sink String IO ()
+print = forever $ do
     it <- await
     lift . putStrLn $ it
 ```
@@ -53,7 +54,7 @@ display = forever $ do
 And write interactive pipelines:
 
 ```haskell
-ghci> let echo = prompt >< display
+ghci> let echo = prompt >< print
 ghci> run echo
 > ping
 ping
@@ -62,7 +63,7 @@ pong
 ```
 
 ```haskell
-ghci> run $ prompt >< filter (/= "Die Antwoord") >< map (++ " sucks") >< display
+ghci> run $ prompt >< filter (/= "Die Antwoord") >< map (++ " sucks") >< print
 > dubstep
 dubstep sucks
 > the sun
@@ -109,7 +110,7 @@ obvious = cat >< map (++ " is a number")
 We can split and merge streams like so:
 
 ```haskell
-ghci> run $ nums *< [ squareIt, doubleIt ] >* obvious >< display
+ghci> run $ nums *< [ squareIt, doubleIt ] >* obvious >< print
 1 is a number
 4 is a number
 9 is a number
@@ -263,7 +264,7 @@ Questions? Comments? Bugs?
 ---
 
 Use the Issues feature of GitHub to send me bugs. For all other inquiries, please send mail to <gatlin@niltag.net>
-with "FreeStream" somewhere in the subject line.
+with "Tubes" somewhere in the subject line.
 
 Some terms and ideas were stolen from Gabriel Gonzalez, author of the
 [pipes][pipes] library.
