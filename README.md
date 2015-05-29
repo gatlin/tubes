@@ -88,12 +88,12 @@ nums = each [1,2,3]
 and some tasks which transform `Int`s:
 
 ```haskell
-doubleIt :: Monad m => Task Int String m ()
+doubleIt :: Monad m => Tube Int String m ()
 doubleIt = forever $ do
     n <- await
     yield . show $ n * 2
 
-squareIt :: Monad m => Task Int String m ()
+squareIt :: Monad m => Tube Int String m ()
 squareIt = forever $ do
     n <- await
     yield . show $ n * n
@@ -103,7 +103,7 @@ And, just to make things a little more interesting, some super-important final
 task:
 
 ```haskell
-obvious :: Monad m => Task String String m ()
+obvious :: Monad m => Tube String String m ()
 obvious = cat >< map (++ " is a number")
 ```
 
@@ -162,40 +162,40 @@ This library makes use of the [`free` package][free] which provides code very
 similar to this, with some performance optimizations and more advanced options.
 At the heart of it, though, is something very similar to my `Free` example.
 
-The central type is `TaskF`, a functor representing the two states a streaming
+The central type is `TubeF`, a functor representing the two states a streaming
 pipeline can be in: yielding a value downstream, or awaiting a value from
 upstream. My definition is a bit different but equivalent to the following:
 
 ```haskell
 {-# LANGUAGE DeriveFunctor #-}
-data TaskF a b k
+data TubeF a b k
     = Await (a -> k)
     | Yield (b,   k)
     deriving (Functor)
 ```
 
-Then the `free` package is used to convert this into the `Task` type. Thus, a
-`Task` can be in one of three states: `Await`-ing an upstream value;
+Then the `free` package is used to convert this into the `Tube` type. Thus, a
+`Tube` can be in one of three states: `Await`-ing an upstream value;
 `Yield`-ing a value downstream; or returning some `Pure` value.
 
 ### Dropping the Boehm
 
-Here is my actual definition of `TaskF`:
+Here is my actual definition of `TubeF`:
 
 ```haskell
 {-# LANGUAGE DeriveFunctor, Rank2Types #-}
-newtype TaskF a b k = TaskF {
+newtype TubeF a b k = TubeF {
     runT :: forall r.
             ((a -> k) -> r)
          -> ((b,   k) -> r)
          -> r
 } deriving (Functor)
 
-awaitF :: (a -> k) -> TaskF a b k
-awaitF f = TaskF $ \a _ -> a f
+awaitF :: (a -> k) -> TubeF a b k
+awaitF f = TubeF $ \a _ -> a f
 
-yieldF :: (b, k) -> TaskF a b k
-yieldF x k = TaskF $ \_ y -> y (x, k)
+yieldF :: (b, k) -> TubeF a b k
+yieldF x k = TubeF $ \_ y -> y (x, k)
 ```
 
 This may not make much sense. Let's take a look at a simpler type: boolean
@@ -242,7 +242,7 @@ Data is control; control is data.
 
 This is called a [Boehm-Berarducci encoding][bbencode]. Instead of building up
 a mountain of `Yield`s and `Await`s wrapping each other, which can waste memory
-and slow down execution, the state of the `Task` dictates which of two
+and slow down execution, the state of the `Tube` dictates which of two
 alternatives it will take.[^2]
 
 The point ... ?
