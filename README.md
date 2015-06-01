@@ -70,55 +70,6 @@ the sun sucks
 this program sucks
 ```
 
-Parallelism and Concurrency
----
-
-**This is incomplete but worth bringing up.**
-
-For this example we have a source of `Int` values
-
-```haskell
-nums :: Monad m => Source Int m ()
-nums = each [1,2,3]
-```
-
-and some tasks which transform `Int`s:
-
-```haskell
-doubleIt :: Monad m => Tube Int String m ()
-doubleIt = forever $ do
-    n <- await
-    yield . show $ n * 2
-
-squareIt :: Monad m => Tube Int String m ()
-squareIt = forever $ do
-    n <- await
-    yield . show $ n * n
-```
-
-And, just to make things a little more interesting, some super-important final
-task:
-
-```haskell
-obvious :: Monad m => Tube String String m ()
-obvious = cat >< map (++ " is a number")
-```
-
-We can split and merge streams like so:
-
-```haskell
-ghci> run $ nums *< [ squareIt, doubleIt ] >* obvious >< print
-1 is a number
-4 is a number
-9 is a number
-2 is a number
-4 is a number
-6 is a number
-```
-
-This is primitive at the moment but it will work for any `Functor`, such as
-those which `fmap` in parallel or concurrently. I think this is exciting.
-
 Extended example: Arithmetic parsing
 ---
 
