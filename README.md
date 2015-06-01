@@ -12,9 +12,6 @@ Haddock documentation is available at
 
 (c) 2014, 2015 Gatlin Johnson <gatlin@niltag.net>
 
-**I JUST CHANGED THE NAME OF THIS PACKAGE. EVERYTHING BUILDS but the
-documentation and such might not be completely changed**
-
 Synopsis
 ---
 
