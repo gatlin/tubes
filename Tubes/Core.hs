@@ -24,18 +24,23 @@ module Tubes.Core
 , run
 , await
 , yield
+, yieldF
+, awaitF
 , liftT
 , each
 , Tubes.Core.for
 , (><)
 , (>-)
 , (~>)
+, lowerF
 ) where
 
 import Control.Monad
 import Control.Monad.Trans
 import Control.Monad.Trans.Free
 import Control.Monad.Trans.Free.Church
+import Control.Comonad
+import Control.Comonad.Trans.Cofree
 import Data.Foldable
 
 {- |
@@ -152,4 +157,10 @@ for src body = liftT src >>= go where
 -- | Convert a list to a 'Source'
 each :: (Monad m, Foldable t) => t b -> Tube a b m ()
 each as = Data.Foldable.mapM_ yield as
+
+-- WAT
+type CoTubeT a b w r = CofreeT (TubeF a b) w r
+
+lowerF :: ComonadCofree f w => w a -> f a
+lowerF = fmap extract . unwrap
 
