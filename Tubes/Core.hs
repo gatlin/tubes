@@ -3,7 +3,7 @@ Module          : Tubes.Core
 Description     : Fundamental types and operations.
 Copyright       : (c) 2014, 2015 Gatlin Johnson <gatlin@niltag.net>
 
-License         : LGPL-3
+License         : GPL-3
 Maintainer      : gatlin@niltag.net
 Stability       : experimental
 -}
