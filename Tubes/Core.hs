@@ -43,7 +43,7 @@ import Control.Comonad.Trans.Cofree
 import Data.Foldable
 
 {- |
-   'TaskF' is the union of unary functions and binary products into a single
+   'TubeF' is the union of unary functions and binary products into a single
    type, here defined with a Boehm-Berarducci encoding.
 
    Rather than using a normal ADT, which would certainly make the code a bit
