@@ -11,7 +11,7 @@ name:                tubes
 -- PVP summary:      +-+------- breaking API changes
 --                   | | +----- non-breaking API additions
 --                   | | | +--- code changes with no API change
-version:             0.4.0.1
+version:             0.1.0.0
 
 -- A short (one-line) description of the package.
 synopsis:            Effectful, iteratee-inspired stream processing based on a
