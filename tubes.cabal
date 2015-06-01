@@ -11,7 +11,7 @@ name:                tubes
 -- PVP summary:      +-+------- breaking API changes
 --                   | | +----- non-breaking API additions
 --                   | | | +--- code changes with no API change
-version:             0.4.0.0
+version:             0.4.0.1
 
 -- A short (one-line) description of the package.
 synopsis:            Effectful, iteratee-inspired stream processing based on a
@@ -60,8 +60,7 @@ cabal-version:       >=1.10
 
 library
   -- Modules exported by the library.
-  exposed-modules:     Tubes, Tubes.Core, Tubes.Util,
-                       Tubes.Par
+  exposed-modules:     Tubes, Tubes.Core, Tubes.Util
   
   -- Modules included in this library but not exported.
   -- other-modules:       
@@ -71,8 +70,7 @@ library
                        FlexibleInstances, FlexibleContexts, DeriveFunctor
   
   -- Other library packages from which modules are imported.
-  build-depends:       base >=4.6 , transformers >=0.3, free >=4.12, mtl,
-                       comonad
+  build-depends:       base >=4.6 , transformers >=0.3, free >=4.12, mtl
   
   -- Directories containing source files.
   -- hs-source-dirs:      

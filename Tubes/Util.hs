@@ -108,6 +108,7 @@ reduce step begin done p0 = runFreeT p0 >>= \p' -> loop p' begin where
 every :: (Foldable t, Monad m) => t b -> Tube a (Maybe b) m ()
 every xs = (each xs >< map Just) >> yield Nothing
 
+-- | Source of 'String's from stdin. This is mostly for debugging / ghci example purposes.
 prompt :: Source String IO ()
 prompt = do
     lift . putStr $ "> "
@@ -117,6 +118,8 @@ prompt = do
         yield str
         prompt
 
+-- | Sink for 'String's to stdout. This is mostly for debugging / ghci example
+-- purposes.
 display :: Sink String IO ()
 display = forever $ do
     it <- await

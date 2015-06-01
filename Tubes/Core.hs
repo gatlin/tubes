@@ -38,8 +38,6 @@ import Control.Monad
 import Control.Monad.Trans
 import Control.Monad.Trans.Free
 import Control.Monad.Trans.Free.Church
-import Control.Comonad
-import Control.Comonad.Trans.Cofree
 import Data.Foldable
 
 {- |

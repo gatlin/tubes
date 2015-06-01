@@ -60,7 +60,6 @@ import Control.Monad.Trans.Free
 
 import Tubes.Core
 import Tubes.Util
-import Tubes.Par
 
 import Control.Monad
 
