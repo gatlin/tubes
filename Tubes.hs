@@ -31,6 +31,8 @@ module Tubes
 -- * Core infrastructure
 , await
 , yield
+, awaitF
+, yieldF
 , each
 , Tubes.Core.for
 , (~>)

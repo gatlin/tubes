@@ -32,7 +32,6 @@ module Tubes.Core
 , (><)
 , (>-)
 , (~>)
-, lowerF
 ) where
 
 import Control.Monad
@@ -157,10 +156,3 @@ for src body = liftT src >>= go where
 -- | Convert a list to a 'Source'
 each :: (Monad m, Foldable t) => t b -> Tube a b m ()
 each as = Data.Foldable.mapM_ yield as
-
--- WAT
-type CoTubeT a b w r = CofreeT (TubeF a b) w r
-
-lowerF :: ComonadCofree f w => w a -> f a
-lowerF = fmap extract . unwrap
-
