@@ -83,13 +83,13 @@ take n = do
         yield x
 
 -- | Taps the next value from a source.
-unyield :: Monad m => Source b m () -> m (Maybe b)
+unyield :: Monad m => FreeT (TubeF x b) m () -> m (Maybe (b, FreeT (TubeF x b) m ()))
 unyield tsk = do
     tsk' <- runFreeT tsk
     case tsk' of
         Pure _      -> return Nothing
         Free tsk''  -> do
-            let res = runT tsk'' diverge (\(v, _) -> Just v)
+            let res = runT tsk'' diverge (\(v, k) -> Just (v, k))
             return res
 
 -- | Strict left-fold of a stream
