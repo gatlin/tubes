@@ -66,7 +66,7 @@ yieldF :: b -> k -> TubeF a b k
 yieldF x k = TubeF $ \_ y -> y (x, k)
 
 -- | A 'Tube' is the free monad transformer arising from 'TubeF'.
-type Tube   a b m r = FreeT  (TubeF a b) m r
+type Tube   a b = FreeT  (TubeF a b)
 
 -- ** Type aliases
 

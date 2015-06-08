@@ -62,4 +62,3 @@ import Tubes.Core
 import Tubes.Util
 
 import Control.Monad
-
