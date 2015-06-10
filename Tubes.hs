@@ -1,7 +1,3 @@
-{-# LANGUAGE DeriveFunctor #-}
-{-# LANGUAGE StandaloneDeriving #-}
-{-# LANGUAGE ExistentialQuantification #-}
-
 {- |
 Module          : Tubes
 Description     : All-encompassing module.
@@ -29,6 +25,9 @@ module Tubes
 , Source(..)
 , Sink(..)
 , Action(..)
+, PumpF(..)
+, Pump(..)
+, pump
 -- * Re-exports
 , lift -- re-exported from Control.Monad.Trans.Free
 , runFreeT -- re-exported from Control.Monad.Trans.Free
@@ -64,3 +63,7 @@ import Control.Monad.Trans.Free
 
 import Tubes.Core
 import Tubes.Util
+
+import Control.Monad (forever, join)
+import Control.Comonad
+import Data.Functor.Identity

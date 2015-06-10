@@ -34,11 +34,11 @@ module Tubes.Core
 , (><)
 , (>-)
 , (~>)
-, Handler(..)
-, HandlerF(..)
+, Pump(..)
+, PumpF(..)
 , Pairing(..)
 , pairEffect
-, handle
+, pump
 ) where
 
 import Control.Monad
@@ -165,12 +165,12 @@ for src body = liftT src >>= go where
 each :: (Monad m, Foldable t) => t b -> Tube a b m ()
 each as = Data.Foldable.mapM_ yield as
 
-data HandlerF a b k = HandlerF
+data PumpF a b k = PumpF
     { recv :: (a  , k)
     , send :: (b -> k)
     } deriving Functor
 
-type Handler a b = CofreeT (HandlerF a b)
+type Pump a b = CofreeT (PumpF a b)
 
 class (Functor f, Functor g) => Pairing f g | f -> g, g -> f where
     pair :: (a -> b -> r) -> f a -> g b -> r
@@ -192,14 +192,14 @@ pairEffect p s c = do
         Pure x -> return $ p (extract s) x
         Free gs -> pair (pairEffect p) (unwrap s) gs
 
-instance Pairing (HandlerF a b) (TubeF a b) where
-    pair p (HandlerF ak bk) tb = runT tb (\ak' -> pair p ak ak')
+instance Pairing (PumpF a b) (TubeF a b) where
+    pair p (PumpF ak bk) tb = runT tb (\ak' -> pair p ak ak')
                                          (\bk' -> pair p bk bk')
 
-handle :: Comonad w
+pump :: Comonad w
        => w a
        -> (w a -> (b, w a))
        -> (c   -> w a)
-       -> Handler b c w a
-handle x r s = coiterT cf x where
-    cf wa = HandlerF (r wa) s
+       -> Pump b c w a
+pump x r s = coiterT cf x where
+    cf wa = PumpF (r wa) s
