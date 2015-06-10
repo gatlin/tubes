@@ -13,6 +13,8 @@ Stability       : experimental
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE FunctionalDependencies #-}
 
 module Tubes.Core
 
@@ -32,13 +34,21 @@ module Tubes.Core
 , (><)
 , (>-)
 , (~>)
+, Handler(..)
+, HandlerF(..)
+, Pairing(..)
+, pairEffect
+, handle
 ) where
 
 import Control.Monad
 import Control.Monad.Trans
 import Control.Monad.Trans.Free
 import Control.Monad.Trans.Free.Church
+import Control.Comonad
+import Control.Comonad.Trans.Cofree
 import Data.Foldable
+import Data.Functor.Identity
 
 {- |
    'TubeF' is the union of unary functions and binary products into a single
@@ -154,3 +164,42 @@ for src body = liftT src >>= go where
 -- | Convert a list to a 'Source'
 each :: (Monad m, Foldable t) => t b -> Tube a b m ()
 each as = Data.Foldable.mapM_ yield as
+
+data HandlerF a b k = HandlerF
+    { recv :: (a  , k)
+    , send :: (b -> k)
+    } deriving Functor
+
+type Handler a b = CofreeT (HandlerF a b)
+
+class (Functor f, Functor g) => Pairing f g | f -> g, g -> f where
+    pair :: (a -> b -> r) -> f a -> g b -> r
+
+instance Pairing Identity Identity where
+    pair f (Identity a) (Identity b) = f a b
+
+instance Pairing ((->) a) ((,) a) where
+    pair p f = uncurry (p . f)
+
+instance Pairing ((,) a) ((->) a) where
+    pair p f g = p (snd f) (g (fst f))
+
+pairEffect :: (Pairing f g, Comonad w, Monad m)
+           => (a -> b -> r) -> CofreeT f w a -> FreeT g m b -> m r
+pairEffect p s c = do
+    mb <- runFreeT c
+    case mb of
+        Pure x -> return $ p (extract s) x
+        Free gs -> pair (pairEffect p) (unwrap s) gs
+
+instance Pairing (HandlerF a b) (TubeF a b) where
+    pair p (HandlerF ak bk) tb = runT tb (\ak' -> pair p ak ak')
+                                         (\bk' -> pair p bk bk')
+
+handle :: Comonad w
+       => w a
+       -> (w a -> (b, w a))
+       -> (c   -> w a)
+       -> Handler b c w a
+handle x r s = coiterT cf x where
+    cf wa = HandlerF (r wa) s
