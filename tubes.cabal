@@ -65,7 +65,7 @@ source-repository head
 
 library
   -- Modules exported by the library.
-  exposed-modules:     Tubes, Tubes.Core, Tubes.Util
+  exposed-modules:     Tubes, Tubes.Core, Tubes.Util, Tubes.Pump
   
   -- Modules included in this library but not exported.
   -- other-modules:       

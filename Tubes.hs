@@ -25,9 +25,6 @@ module Tubes
 , Source(..)
 , Sink(..)
 , Action(..)
-, PumpF(..)
-, Pump(..)
-, pump
 -- * Re-exports
 , lift -- re-exported from Control.Monad.Trans.Free
 , runFreeT -- re-exported from Control.Monad.Trans.Free
@@ -55,6 +52,10 @@ module Tubes
 , Tubes.Util.unyield
 , Tubes.Util.prompt
 , Tubes.Util.display
+-- * Pump
+, PumpF(..)
+, Pump(..)
+, pump
 ) where
 
 import Prelude hiding (map, fold, print, filter, take)
@@ -63,7 +64,4 @@ import Control.Monad.Trans.Free
 
 import Tubes.Core
 import Tubes.Util
-
-import Control.Monad (forever, join)
-import Control.Comonad
-import Data.Functor.Identity
+import Tubes.Pump
