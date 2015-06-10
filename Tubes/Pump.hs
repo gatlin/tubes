@@ -7,15 +7,13 @@ License         : GPL-3
 Maintainer      : gatlin@niltag.net
 Stability       : experimental
 
-A 'Pump' is the dual to a 'Tube': where a 'Tube' is a computation manipulating
-a stream of values, a 'Pump' can be situated on either end of a tube to both
-insert values when requested and handle any yielded results.
 -}
 
 {-# LANGUAGE NoMonomorphismRestriction #-}
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE FunctionalDependencies #-}
+{-# LANGUAGE FlexibleContexts #-}
 
 module Tubes.Pump
 
@@ -24,6 +22,8 @@ module Tubes.Pump
 , Pairing(..)
 , pairEffect
 , pump
+, recv
+, send
 ) where
 
 import Control.Monad
@@ -36,14 +36,23 @@ import Data.Functor.Identity
 
 import Tubes.Core
 
--- | The dual to a 'TubeF'
 data PumpF a b k = PumpF
-    { recv :: (a  , k)
-    , send :: (b -> k)
+    { recvF :: (a  , k)
+    , sendF :: (b -> k)
     } deriving Functor
 
--- | A 'Pump' is the cofree comonad transformer based on a 'PumpF'
+{- |
+A 'Pump' is the dual to a 'Tube': where a 'Tube' is a computation manipulating
+a stream of values, a 'Pump' can be situated on either end of a tube to both
+insert values when requested and handle any yielded results.
+-}
 type Pump a b = CofreeT (PumpF a b)
+
+recv :: Comonad w => Pump a b w r -> (a, Pump a b w r)
+recv p = recvF . unwrap $ p
+
+send :: Comonad w => Pump a b w r -> b -> Pump a b w r
+send p x = (sendF (unwrap p)) x
 
 -- ** Pairing
 
@@ -51,6 +60,8 @@ type Pump a b = CofreeT (PumpF a b)
 Lovingly stolen from Dan Piponi and David Laing. This defines a poor man\'s
 adjunction: it allows adjoint functors to essentially annihilate one another
 and produce a final value.
+
+If something equivalent comes along, I'll switch to it.
 -}
 class (Functor f, Functor g) => Pairing f g | f -> g, g -> f where
     pair :: (a -> b -> r) -> f a -> g b -> r
