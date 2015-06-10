@@ -1,3 +1,7 @@
+{-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE ExistentialQuantification #-}
+
 {- |
 Module          : Tubes
 Description     : All-encompassing module.
@@ -54,11 +58,9 @@ module Tubes
 , Tubes.Util.display
 ) where
 
-import Prelude hiding (map, fold, print, filter)
+import Prelude hiding (map, fold, print, filter, take)
 import Control.Monad.Trans.Class
 import Control.Monad.Trans.Free
 
 import Tubes.Core
 import Tubes.Util
-
-import Control.Monad
