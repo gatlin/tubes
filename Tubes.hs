@@ -56,6 +56,10 @@ module Tubes
 , PumpF(..)
 , Pump(..)
 , pump
+, Pairing(..)
+, pairEffect
+, send
+, recv
 ) where
 
 import Prelude hiding (map, fold, print, filter, take)
