@@ -7,5 +7,6 @@ free monad.</p></div><div id="content"><div id="description"><h1>tubes-0.2.0.0: 
 free monad.</h1><div class="doc"><p>This package provides the <code>Tube</code> monad transformer, allowing any monad
 computation to become a stream processing pipeline. A computation of type
 <code>Tube a b m r</code> consumes values of type <code>a</code> and produces values of type
-<code>b</code>.</p><p>Examples and more information may be found at
+<code>b</code>.</p><p><code>Tube</code>s are coroutines which can suspend computation to yield an
+intermediate value or continue execution by requesting an upstream value.</p><p>Examples and more information may be found at
 <a href="https://github.com/gatlin/tubes">https://github.com/gatlin/tubes</a>.</p></div></div><div id="module-list"><p class="caption">Modules</p><ul><li><span class="module"><span id="control.n.1" class="collapser" onclick="toggleSection('n.1')">&nbsp;</span><a href="Tubes.html">Tubes</a></span> All-encompassing module.<ul id="section.n.1" class="show"><li><span class="module"><a href="Tubes-Core.html">Tubes.Core</a></span></li><li><span class="module"><a href="Tubes-Pump.html">Tubes.Pump</a></span></li><li><span class="module"><a href="Tubes-Util.html">Tubes.Util</a></span></li></ul></li></ul></div></div><div id="footer"><p>Produced by <a href="http://www.haskell.org/haddock/">Haddock</a> version 2.16.0</p></div></body></html>
