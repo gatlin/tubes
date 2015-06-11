@@ -37,7 +37,6 @@ module Tubes.Core
 , yieldF
 , awaitF
 -- * Miscellaneous
-, runT
 , liftT
 ) where
 
