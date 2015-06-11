@@ -60,10 +60,10 @@ hence this mechanism does act like something of a pump.
 pump :: Comonad w
        => w a
        -> (w a -> (b, w a))
-       -> (c   -> w a)
+       -> (w a -> c -> w a)
        -> Pump b c w a
 pump x r s = coiterT cf x where
-    cf wa = PumpF (r wa) s
+    cf wa = PumpF (r wa) (s wa)
 
 -- | Pull a value from a 'Pump', along with the rest of the 'Pump'.
 recv :: Comonad w => Pump a b w r -> (a, Pump a b w r)
