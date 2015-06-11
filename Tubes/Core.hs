@@ -15,23 +15,30 @@ Stability       : experimental
 {-# LANGUAGE DeriveFunctor #-}
 
 module Tubes.Core
-
-( Tube(..)
+(
+-- * Basic definitions
+  Tube(..)
 , TubeF(..)
+-- * Type aliases
 , Source(..)
 , Sink(..)
 , Action(..)
+-- * Core commands
 , run
 , await
 , yield
-, yieldF
-, awaitF
-, liftT
+-- * Control mechanisms
 , each
 , Tubes.Core.for
 , (><)
 , (>-)
 , (~>)
+-- * @TubeF@ value constructors
+, yieldF
+, awaitF
+-- * Miscellaneous
+, runT
+, liftT
 ) where
 
 import Control.Monad
@@ -42,14 +49,24 @@ import Data.Foldable
 import Data.Functor.Identity
 
 {- |
-   'TubeF' is the union of unary functions and binary products into a single
-   type, here defined with a Boehm-Berarducci encoding.
+'TubeF' is the union of unary functions and binary products into a single
+type, here defined with a Boehm-Berarducci encoding.
 
-   Rather than using a normal ADT, which would certainly make the code a bit
-   easier to read and write, a value of this type is actually a control flow
-   mechanism accepting two continuations and choosing one or the other.
+This type is equivalent to the following:
 
-   Client code should never actually have to deal with this.
+    @
+        data TubeF a b k
+            = Await (a -> k) -- :: (a -> k) -> TubeF a b k
+            | Yield (b  , k) -- :: (b  , k) -> TubeF a b k
+    @
+
+The type signatures for the two value constructors should bear a strong
+resemblance to the actual type signature of 'runT'. Instead of encoding
+tubes as structures which build up when composed, a 'TubeF' is a control
+flow mechanism which picks one of two provided continuations.
+
+People using this library should never have to contend with these details
+but it is worth mentioning.
  -}
 newtype TubeF a b k = TubeF {
     runT :: forall r.
@@ -66,15 +83,29 @@ awaitF f = TubeF $ \a _ -> a f
 yieldF :: b -> k -> TubeF a b k
 yieldF x k = TubeF $ \_ y -> y (x, k)
 
--- | A 'Tube' is the free monad transformer arising from 'TubeF'.
-type Tube   a b = FreeT  (TubeF a b)
+{- |
+A 'Tube' is a computation which can
+
+* 'yield' an intermediate value downstream and suspend execution; and
+
+* 'await' a value from upstream, deferring execution until it is received.
+
+Moreover, individual 'Tube's may be freely composed into larger ones, so long
+as their types match. Thus, one may write small, reusable building blocks and
+construct efficient stream process pipelines.
+
+Since a much better engineered, more popular, and decidedly more mature
+library already uses the term "pipes" I have opted instead to think of my work
+as a series of tubes.
+-}
+type Tube   a b     = FreeT  (TubeF a b)
 
 -- ** Type aliases
 
 -- | A computation which only 'yield's and never 'await's
 type Source   b m r = forall x. Tube x b m r
 
--- | A computation which only 'await's and never 'yield's
+-- | A computation which only 'await's and never 'yield's.
 type Sink   a   m r = forall x. Tube a x m r
 
 -- | A computation which neither 'yield's nor 'await's
@@ -84,12 +115,10 @@ type Action     m r = forall x. Tube x x m r
 This performs a neat trick: a 'Tube' with a return type @a@ will be
 turned into a new 'Tube' containing the underlying 'TubeF' value.
 
-
 In this way the '><' and '>-' functions can replace the @()@ return value with
 a continuation and recursively traverse the computation until a final result
 is reached.
 -}
-
 liftT :: (MonadTrans t, Monad m)
       => FreeT f m a
       -> t m (FreeF f a (FreeT f m a))
@@ -99,8 +128,6 @@ liftT = lift . runFreeT
 -- day
 run :: FreeT f m a -> m (FreeF f a (FreeT f m a))
 run = runFreeT
-
-{- ** Basic Tube infrastructure -}
 
 -- | Command to wait for a new value upstream
 await :: Monad m => Tube a b m a
@@ -120,7 +147,7 @@ p >- f = liftT p >>= go where
     go (Free p') = runT p' (\f' -> wrap $ awaitF (\a -> (f' a) >- f))
                            (\(v, k) -> k >< f v)
 
--- | Compose two tasks in a pull-based stream
+-- | Compose two tubes into a new tube.
 (><) :: Monad m
      => Tube a b m r
      -> Tube b c m r

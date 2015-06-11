@@ -27,6 +27,9 @@ description:
     @Tube a b m r@ consumes values of type 'a' and produces values of type
     'b'.
     .
+    @Tube@s are coroutines which can suspend computation to yield an
+    intermediate value or continue execution by requesting an upstream value.
+    .
     Examples and more information may be found at
     <https://github.com/gatlin/tubes>.
 
@@ -65,7 +68,7 @@ source-repository head
 
 library
   -- Modules exported by the library.
-  exposed-modules:     Tubes, Tubes.Core, Tubes.Util, Tubes.Pump
+  exposed-modules:     Tubes
   
   -- Modules included in this library but not exported.
   -- other-modules:       

@@ -7,38 +7,40 @@ License         : GPL-3
 Maintainer      : gatlin@niltag.net
 Stability       : experimental
 
+Write effect-ful stream processing functions and compose them into a series of
+tubes.
+
 This exists primarily for my own education. It is updated often as I try
 things and is probably, at this moment, wrong.
 
-If you want to know more about iteratees:
+If you want to know more about efficient stream processing:
 
     http://okmij.org/ftp/Streams.html
 
-My goals were to (1) learn more about iteratees and (2) see how far I
-could get using free monads.
- -}
+My goals were to
+
+* learn more about iteratees and
+
+* explore the relationships between functions, pairs, sum types, and products.
+-}
 
 module Tubes
-
-( TubeF(..)
-, Tube(..)
+(
+-- * Tubes
+  Tube(..)
+, TubeF(..)
 , Source(..)
 , Sink(..)
 , Action(..)
--- * Re-exports
-, lift -- re-exported from Control.Monad.Trans.Free
-, runFreeT -- re-exported from Control.Monad.Trans.Free
 -- * Core infrastructure
+, run
 , await
 , yield
-, awaitF
-, yieldF
 , each
 , Tubes.Core.for
 , (~>)
 , (>-)
 , (><)
-, run
 , liftT
 -- * Utilities
 , cat
@@ -53,13 +55,15 @@ module Tubes
 , Tubes.Util.prompt
 , Tubes.Util.display
 -- * Pump
-, PumpF(..)
 , Pump(..)
+, PumpF(..)
 , pump
-, Pairing(..)
-, pairEffect
 , send
 , recv
+, runPump
+-- * Re-exports
+, lift -- re-exported from Control.Monad.Trans.Free
+, runFreeT -- re-exported from Control.Monad.Trans.Free
 ) where
 
 import Prelude hiding (map, fold, print, filter, take)
@@ -69,3 +73,4 @@ import Control.Monad.Trans.Free
 import Tubes.Core
 import Tubes.Util
 import Tubes.Pump
+

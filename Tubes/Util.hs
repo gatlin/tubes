@@ -82,7 +82,7 @@ take n = do
         x <- await
         yield x
 
--- | Taps the next value from a source.
+-- | Taps the next value from a source, maybe.
 unyield :: Monad m => FreeT (TubeF x b) m () -> m (Maybe (b, FreeT (TubeF x b) m ()))
 unyield tsk = do
     tsk' <- runFreeT tsk
@@ -92,7 +92,10 @@ unyield tsk = do
             let res = runT tsk'' diverge (\(v, k) -> Just (v, k))
             return res
 
--- | Strict left-fold of a stream
+{- |
+Strict left-fold of a stream. Note that the actual return type of the source
+is not relevant, only the intermediate yield type.
+-}
 reduce :: Monad m
        => (x -> a -> x) -- ^ step function
        -> x             -- ^ initial value
