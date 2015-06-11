@@ -73,10 +73,3 @@ import Control.Monad.Trans.Free
 import Tubes.Core
 import Tubes.Util
 import Tubes.Pump
-
-import Control.Comonad
-import Data.Functor.Identity
-
-p :: Pump Bool String Identity Int
-p = pump (Identity 1) (\wa -> (even (extract wa), fmap (+1) wa))
-                      (\wa str -> fmap (+(length str)) wa)
