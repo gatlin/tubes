@@ -39,8 +39,6 @@ import Tubes.Core
 A 'Pump' is the dual to a 'Tube': where a 'Tube' is a computation manipulating
 a stream of values, a 'Pump' can be situated on either end of a tube to both
 insert values when requested and handle any yielded results.
-
-This module is subject to change before I upload `0.2.0.0` to Hackage.
 -}
 
 type Pump a b = CofreeT (PumpF a b)
