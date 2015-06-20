@@ -189,7 +189,7 @@ for src body = liftT src >>= go where
 each :: (Monad m, Foldable t) => t b -> Tube a b m ()
 each as = Data.Foldable.mapM_ yield as
 
--- | Apply a sink to a value
+-- | Insert a value into a 'Sink'
 (-<) :: Monad m
      => a
      -> Sink a m b

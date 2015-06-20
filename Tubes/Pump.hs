@@ -16,7 +16,7 @@ Stability       : experimental
 
 module Tubes.Pump
 
-( -- $pumpintro
+(
   Pump(..)
 , PumpF(..)
 , pump
@@ -35,7 +35,7 @@ import Data.Functor.Identity
 
 import Tubes.Core
 
-{- $pumpintro
+{- |
 A 'Pump' is the dual to a 'Tube': where a 'Tube' is a computation manipulating
 a stream of values, a 'Pump' can be situated on either end of a tube to both
 insert values when requested and handle any yielded results.
