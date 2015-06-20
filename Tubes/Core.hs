@@ -22,7 +22,6 @@ module Tubes.Core
 -- * Type aliases
 , Source(..)
 , Sink(..)
-, Action(..)
 -- * Core commands
 , run
 , await
@@ -33,6 +32,8 @@ module Tubes.Core
 , (><)
 , (>-)
 , (~>)
+, (-<)
+, (|>)
 -- * @TubeF@ value constructors
 , yieldF
 , awaitF
@@ -46,6 +47,15 @@ import Control.Monad.Trans.Free
 import Control.Monad.Trans.Free.Church
 import Data.Foldable
 import Data.Functor.Identity
+
+-- as in Util, these are here to trivially satisfy situations I provably won't
+-- get in.
+
+fix :: (a -> a) -> a
+fix f = let x = f x in x
+
+diverge :: a
+diverge = fix id
 
 {- |
 'TubeF' is the union of unary functions and binary products into a single
@@ -106,9 +116,6 @@ type Source   b m r = forall x. Tube x b m r
 
 -- | A computation which only 'await's and never 'yield's.
 type Sink   a   m r = forall x. Tube a x m r
-
--- | A computation which neither 'yield's nor 'await's
-type Action     m r = forall x. Tube x x m r
 
 {- |
 This performs a neat trick: a 'Tube' with a return type @a@ will be
@@ -181,3 +188,37 @@ for src body = liftT src >>= go where
 -- | Convert a list to a 'Source'
 each :: (Monad m, Foldable t) => t b -> Tube a b m ()
 each as = Data.Foldable.mapM_ yield as
+
+-- | Apply a sink to a value
+(-<) :: Monad m
+     => a
+     -> Sink a m b
+     -> Sink a m b
+x -< snk = liftT snk >>= go where
+    go (Pure y) = return y
+    go (Free snk') = runT snk' (\f -> f x) diverge
+
+-- | Implementation of '|>' but without the type constraints.
+(\|>) :: Monad m
+      => Tube a b m r
+      -> Tube (Maybe b) c m s
+      -> Tube (Maybe b) c m s
+src \|> snk = liftT snk >>= goSnk where
+    goSnk (Pure x) = return x
+    goSnk (Free snk') = runT snk'
+        (\fSnk -> (liftT src) >>= goSrc fSnk)
+        diverge
+
+    goSrc f (Pure _) = f Nothing
+    goSrc f (Free snk') = runT snk' diverge $
+        \(v,k) -> k \|> (f (Just v))
+
+{- |
+Connects a 'Source' to a 'Sink', finishing when either the 'Source' is
+exhausted or the 'Sink' terminates.
+-}
+(|>) :: Monad m
+     => Source b m ()
+     -> Sink (Maybe b) m s
+     -> Sink (Maybe b) m s
+(|>) = (\|>)
