@@ -11,7 +11,7 @@ name:                tubes
 -- PVP summary:      +-+------- breaking API changes
 --                   | | +----- non-breaking API additions
 --                   | | | +--- code changes with no API change
-version:             0.2.1.0
+version:             0.2.2.1
 
 -- Constraint on the version of Cabal needed to build this package.
 cabal-version:       >=1.10
@@ -78,7 +78,7 @@ library
                        FlexibleInstances, FlexibleContexts, DeriveFunctor
   
   -- Other library packages from which modules are imported.
-  build-depends:       base >=4.6 && < 5,
+  build-depends:       base >=4.8 && < 5,
                        transformers >=0.3,
                        free >=4.12,
                        mtl,

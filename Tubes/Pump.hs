@@ -6,7 +6,6 @@ Copyright       : (c) 2014, 2015 Gatlin Johnson <gatlin@niltag.net>
 License         : GPL-3
 Maintainer      : gatlin@niltag.net
 Stability       : experimental
-
 -}
 
 {-# LANGUAGE NoMonomorphismRestriction #-}
@@ -17,7 +16,8 @@ Stability       : experimental
 
 module Tubes.Pump
 
-( Pump(..)
+(
+  Pump(..)
 , PumpF(..)
 , pump
 , recv
@@ -39,6 +39,38 @@ import Tubes.Core
 A 'Pump' is the dual to a 'Tube': where a 'Tube' is a computation manipulating
 a stream of values, a 'Pump' can be situated on either end of a tube to both
 insert values when requested and handle any yielded results.
+
+One interesting use of a 'Pump' is to feed data to a 'Tube', collecting the
+result as well as unused input:
+
+    @
+    import Data.Functor.Identity
+
+    p :: [a] -> Pump (Maybe a) x Identity [a]
+    p inp = pump (return inp)
+            (\wa -> case (extract wa) of
+                [] -> (Nothing, wa)
+                x:xs -> (Just x, return xs))
+            const
+
+    -- a 'Sink' that stops after 5 loops, or when input is exhausted
+    add5 :: Sink (Maybe Int) IO Int
+    add5 = loop 0 5 where
+        loop acc ct = if 0 == ct
+            then return acc
+            else do
+                mn <- await
+                maybe (return acc)
+                      (\n -> loop (acc+n) (ct - 1))
+                      mn
+
+    result :: IO ([Int], Int)
+    result = runPump (curry id) (p [1..10]) add5
+    -- ([6,7,8,9,10],15)
+    @
+
+'Pump's are still being investigated by the author so if you come up with
+something interesting, please share!
 -}
 
 type Pump a b = CofreeT (PumpF a b)
@@ -51,7 +83,7 @@ data PumpF a b k = PumpF
 {- |
 Creates a 'Pump' for a 'Tube' using a comonadic seed value, a function to give
 it more data upon request, and a function to handle any yielded results.
-.
+
 Values received from the 'Tube' may be altered and sent back into the tube,
 hence this mechanism does act like something of a pump.
 -}
@@ -77,7 +109,7 @@ send p x = (sendF (unwrap p)) x
 Lovingly stolen from Dan Piponi and David Laing. This models a poor man\'s
 adjunction: it allows adjoint functors to essentially annihilate one another
 and produce a final value.
-.
+
 If this or something equivalent turns up in a separate package I will happily
 switch to using that.
 -}
