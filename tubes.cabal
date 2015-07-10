@@ -32,6 +32,10 @@ description:
     .
     Examples and more information may be found at
     <https://github.com/gatlin/tubes>.
+    .
+    If I managed to upload another faulty package that does not build
+    correctly, Hackage documentation is also available at
+    <http://niltag.net/tubes>.
 
 -- URL for the project homepage or repository.
 homepage:            https://github.com/gatlin/tubes
