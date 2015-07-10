@@ -85,7 +85,7 @@ library
                        FlexibleInstances, FlexibleContexts, DeriveFunctor
   
   -- Other library packages from which modules are imported.
-  build-depends:       base >=4.6 && < 5,
+  build-depends:       base >=4.8 && < 5,
                        transformers >=0.3,
                        free >=4.12,
                        mtl,
