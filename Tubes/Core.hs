@@ -218,7 +218,7 @@ Connects a 'Source' to a 'Sink', finishing when either the 'Source' is
 exhausted or the 'Sink' terminates.
 -}
 (|>) :: Monad m
-     => Source b m ()
-     -> Sink (Maybe b) m s
-     -> Sink (Maybe b) m s
+     => Tube x b m r
+     -> Tube (Maybe b) y m s
+     -> Tube (Maybe b) y m s
 (|>) = (\|>)
