@@ -219,6 +219,6 @@ exhausted or the 'Sink' terminates.
 -}
 (|>) :: Monad m
      => Tube x b m r
-     -> Tube (Maybe b) y m s
-     -> Tube (Maybe b) y m s
+     -> Sink (Maybe b) m s
+     -> Sink (Maybe b) m s
 (|>) = (\|>)
