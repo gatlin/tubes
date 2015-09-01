@@ -32,6 +32,7 @@ import Control.Monad.Trans.Free.Church
 import Control.Comonad
 import Control.Comonad.Trans.Cofree
 import Data.Functor.Identity
+import Data.Foldable
 
 import Tubes.Core
 
@@ -79,6 +80,10 @@ data PumpF a b k = PumpF
     { recvF :: (a  , k)
     , sendF :: (b -> k)
     } deriving Functor
+
+instance Foldable (PumpF a b) where
+    foldMap f (PumpF (_, k) _) = f k
+    foldr f z (PumpF (_, k) _) = f k z
 
 {- |
 Creates a 'Pump' for a 'Tube' using a comonadic seed value, a function to give
