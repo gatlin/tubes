@@ -43,8 +43,7 @@ import Tubes.Core
 
 {- |
 A 'Pump' is the dual to a 'Tube'. Intuitively, if a @Tube@ is a stream-
-processing component that may suspend execution to yield or await values then
-a @Pump@ is a value which may simultaneously act as a producer and a consumer.
+processing computation, then a @Pump@ is both a stream generator and reducer.
 
 Examples may help!
 
@@ -108,7 +107,10 @@ result of the computation and the unused input.
         putStrLn $ "Unused: " ++ (show unused)
         -- "Total: 15
         -- "Unused: [6,7,8,9,10]"
-    @
+    @o
+
+Note that when a @Pump@ and a @Tube@ are combined with 'pump', that the @Tube@
+determines control flow. @Pump@s are comonads, not monads.
 
 There are doubtless more and more interesting examples of combining @Tube@s
 and @Pump@s. If you think of any, drop the author a line!
