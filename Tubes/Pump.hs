@@ -19,10 +19,13 @@ module Tubes.Pump
 (
   Pump(..)
 , PumpF(..)
-, pump
+, mkPump
 , recv
 , send
-, runPump
+, pump
+, meta
+, enumerator
+, enumerate
 ) where
 
 import Control.Monad
@@ -36,38 +39,52 @@ import Data.Foldable
 
 import Tubes.Core
 
+-- ** Definition
+
 {- |
 A 'Pump' is the dual to a 'Tube': where a 'Tube' is a computation manipulating
 a stream of values, a 'Pump' can be situated on either end of a tube to both
 insert values when requested and handle any yielded results.
 
-One interesting use of a 'Pump' is to feed data to a 'Tube', collecting the
-result as well as unused input:
+One interesting use of a 'Pump' is as a data stream, which can be fed into a
+'Tube' or 'Sink'.
 
     @
     import Data.Functor.Identity
 
-    p :: [a] -> Pump (Maybe a) x Identity [a]
-    p inp = pump (return inp)
-            (\wa -> case (extract wa) of
-                [] -> (Nothing, wa)
-                x:xs -> (Just x, return xs))
-            const
-
     -- a 'Sink' that stops after 5 loops, or when input is exhausted
-    add5 :: Sink (Maybe Int) IO Int
-    add5 = loop 0 5 where
-        loop acc ct = if 0 == ct
-            then return acc
-            else do
-                mn <- await
-                maybe (return acc)
-                      (\n -> loop (acc+n) (ct - 1))
-                      mn
+    sum_snk :: Sink (Maybe Int) IO Int
+    sum_snk = do
+        ns <- forM [1,2,3,4,5] $ \_ -> do
+            mn <- await
+            case mn of
+                Just n -> return [n]
+                Nothing -> return []
+        return $ sum . concat $ ns
 
     result :: IO ([Int], Int)
-    result = runPump (curry id) (p [1..10]) add5
+    result = pump (curry id) (enumerator [1..10]) sum_snk
     -- ([6,7,8,9,10],15)
+    @
+
+Another way of looking at a 'Pump' is as a non-recursive left fold, with an
+accumulating function, an initial value, and a final transformation step.
+
+    @
+    num_src :: Source Int IO ()
+    num_src = do
+        forM_ [1..] $ \n -> do
+            lift . putStrLn $ "Yielding " ++ (show n)
+            yield n
+
+    enum_ex :: IO ()
+    enum_ex = do
+        e <- reduce send (meta (+) 0 (\x -> (x,x))) recv $ num_src >< take 5
+        (unused, total) <- pump (,) e sum_snk
+        putStrLn $ "Total: " ++ (show total)
+        putStrLn $ "Unused: " ++ (show unused)
+        -- v => 15
+        -- extract k => 15
     @
 
 'Pump's are still being investigated by the author so if you come up with
@@ -81,6 +98,7 @@ data PumpF a b k = PumpF
     , sendF :: (b -> k)
     } deriving Functor
 
+-- | This instance allows a 'Pump' to be turned into a 'Source' using 'each'.
 instance Foldable (PumpF a b) where
     foldMap f (PumpF (_, k) _) = f k
     foldr f z (PumpF (_, k) _) = f k z
@@ -92,12 +110,12 @@ it more data upon request, and a function to handle any yielded results.
 Values received from the 'Tube' may be altered and sent back into the tube,
 hence this mechanism does act like something of a pump.
 -}
-pump :: Comonad w
+mkPump :: Comonad w
        => w a
        -> (w a -> (b, w a))
        -> (w a -> c -> w a)
        -> Pump b c w a
-pump x r s = coiterT cf x where
+mkPump x r s = coiterT cf x where
     cf wa = PumpF (r wa) (s wa)
 
 -- | Pull a value from a 'Pump', along with the rest of the 'Pump'.
@@ -107,6 +125,36 @@ recv p = recvF . unwrap $ p
 -- | Send a value into a 'Pump', effectively re-seeding the stream.
 send :: Comonad w => b -> Pump a b w r -> Pump a b w r
 send x p = (sendF (unwrap p)) x
+
+-- ** Utilities
+
+-- | Takes a fold function, an initial value, and an unfold to produce a
+-- metamorphism. Can be used to change.
+meta :: (x -> a -> x)
+     -> x
+     -> (x -> (b, x))
+     -> Pump b a Identity x
+meta step init done = mkPump (Identity init)
+    (\(Identity xs) -> Identity <$> done xs)
+    (\(Identity xs) x -> Identity (step xs x))
+
+-- | Constructs an enumerator pump, which can buffer values and then enumerate
+-- them to, say, a 'Sink' (see the examples above).
+enumerator :: [a] -> Pump (Maybe a) a Identity [a]
+enumerator inp = meta (\xs x -> xs ++ [x]) inp
+    (\lst -> case lst of
+        []      -> (Nothing, lst)
+        (x:xs)  -> (Just x, xs))
+
+-- | Transforms a 'Pump' into a corresponding 'Tube'.
+enumerate :: (Monad m, Comonad w)
+          => Pump (Maybe a) b w r
+          -> Tube c a m ()
+enumerate p = do
+    let (mv, k) = recv p
+    case mv of
+        Nothing -> return ()
+        Just v' -> yield v' >> enumerate k
 
 -- ** Pairing
 
@@ -146,6 +194,6 @@ instance Pairing (PumpF a b) (TubeF a b) where
 Given a suitably matching 'Tube' and 'Pump', you can use the latter to execute
 the former.
 -}
-runPump :: (Comonad w, Monad m)
+pump :: (Comonad w, Monad m)
         => (x -> y -> r) -> Pump a b w x -> Tube a b m y -> m r
-runPump = pairEffect
+pump = pairEffect
