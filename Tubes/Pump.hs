@@ -47,7 +47,8 @@ a stream of values, a 'Pump' can be situated on either end of a tube to both
 insert values when requested and handle any yielded results.
 
 One interesting use of a 'Pump' is as a data stream, which can be fed into a
-'Tube' or 'Sink'.
+'Tube' or 'Sink'. The following example streams data into a 'Sink', returning
+both the result value and the unused input.
 
     @
     import Data.Functor.Identity
@@ -55,7 +56,7 @@ One interesting use of a 'Pump' is as a data stream, which can be fed into a
     -- a 'Sink' that stops after 5 loops, or when input is exhausted
     sum_snk :: Sink (Maybe Int) IO Int
     sum_snk = do
-        ns <- forM [1,2,3,4,5] $ \_ -> do
+        ns \<\- forM [1,2,3,4,5] $ \_ -> do
             mn <- await
             case mn of
                 Just n -> return [n]
@@ -67,8 +68,8 @@ One interesting use of a 'Pump' is as a data stream, which can be fed into a
     -- ([6,7,8,9,10],15)
     @
 
-Another way of looking at a 'Pump' is as a non-recursive left fold, with an
-accumulating function, an initial value, and a final transformation step.
+Another way of looking at a 'Pump' is as a non-recursive left fold paired with
+a generating function to unfold another stream (thus, a metamorphism).
 
     @
     num_src :: Source Int IO ()
@@ -79,7 +80,7 @@ accumulating function, an initial value, and a final transformation step.
 
     enum_ex :: IO ()
     enum_ex = do
-        e <- reduce send (meta (+) 0 (\x -> (x,x))) recv $ num_src >< take 5
+        e \<\- reduce send (meta (+) 0 (\x -> (x,x))) recv $ num_src >< take 5
         (unused, total) <- pump (,) e sum_snk
         putStrLn $ "Total: " ++ (show total)
         putStrLn $ "Unused: " ++ (show unused)
@@ -98,7 +99,6 @@ data PumpF a b k = PumpF
     , sendF :: (b -> k)
     } deriving Functor
 
--- | This instance allows a 'Pump' to be turned into a 'Source' using 'each'.
 instance Foldable (PumpF a b) where
     foldMap f (PumpF (_, k) _) = f k
     foldr f z (PumpF (_, k) _) = f k z
