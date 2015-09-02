@@ -105,8 +105,8 @@ recv :: Comonad w => Pump a b w r -> (a, Pump a b w r)
 recv p = recvF . unwrap $ p
 
 -- | Send a value into a 'Pump', effectively re-seeding the stream.
-send :: Comonad w => Pump a b w r -> b -> Pump a b w r
-send p x = (sendF (unwrap p)) x
+send :: Comonad w => b -> Pump a b w r -> Pump a b w r
+send x p = (sendF (unwrap p)) x
 
 -- ** Pairing
 
