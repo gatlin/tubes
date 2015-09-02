@@ -55,10 +55,13 @@ module Tubes
 -- * Pump
 , Pump(..)
 , PumpF(..)
-, pump
+, mkPump
 , send
 , recv
-, runPump
+, pump
+, meta
+, enumerator
+, enumerate
 -- * Re-exports
 , lift -- re-exported from Control.Monad.Trans.Free
 , runFreeT -- re-exported from Control.Monad.Trans.Free
@@ -87,8 +90,8 @@ be turned into a 'Tube'.
     4
     @
 
-Here, 'each' converts an 'Foldable' into a 'Source' of values; 'for' performs
-a computation with each value. Another example, using two built-in 'Tube's for
+Here, 'each' converts a 'Foldable' into a 'Source' of values; 'for' performs a
+computation with each value. Another example, using two built-in 'Tube's for
 convenience:
 
     @
