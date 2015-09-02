@@ -42,13 +42,50 @@ import Tubes.Core
 -- ** Definition
 
 {- |
-A 'Pump' is the dual to a 'Tube': where a 'Tube' is a computation manipulating
-a stream of values, a 'Pump' can be situated on either end of a tube to both
-insert values when requested and handle any yielded results.
+A 'Pump' is the dual to a 'Tube'. Intuitively, if a @Tube@ is a stream-
+processing component that may suspend execution to yield or await values then
+a @Pump@ is a value which may simultaneously act as a producer and a consumer.
 
-One interesting use of a 'Pump' is as a data stream, which can be fed into a
-'Tube' or 'Sink'. The following example streams data into a 'Sink', returning
-both the result value and the unused input.
+Examples may help!
+
+One interesting use of a @Pump@ is as a data stream, which can be fed into a
+@Tube@ or @Sink@.
+
+    @
+    import Data.Functor.Identity
+
+    e :: Pump (Maybe Int) Int Identity Int
+    e = mkPump (Identity 0)
+            (\(Identity x) -> (Just x, Identity (x+1)))
+            const
+
+    ex1 :: IO ()
+    ex1 = do
+        run $ each e >< take 10 >< map show >< display
+        -- displays 0-9 in the console
+    @
+
+A @Pump@ may also be used to fold a @Source@. Indeed, a @Pump@ may be thought
+of as both a non-recursive left fold and a non-recursive unfold paired
+together. (This is called a "metamorphism," hence the function "meta".)
+
+    @
+    num_src :: Source Int IO ()
+    num_src = do
+        forM_ [1..] $ \n -> do
+            lift . putStrLn $ "Yielding " ++ (show n)
+            yield n
+
+    enum_ex :: IO ()
+    enum_ex = do
+        v \<\- reduce (flip send) (meta (+) 0 (\x -> (x,x))) extract $ num_src >< take 5
+        putStrLn . show $ "v = " ++ (show v)
+        -- v = 15
+    @
+
+The following is an example of a @Pump@ both accumulating values from a
+@Source@ and then enumerating them into a @Sink@. This gives back both the
+result of the computation and the unused input.
 
     @
     import Data.Functor.Identity
@@ -63,33 +100,18 @@ both the result value and the unused input.
                 Nothing -> return []
         return $ sum . concat $ ns
 
-    result :: IO ([Int], Int)
-    result = pump (curry id) (enumerator [1..10]) sum_snk
-    -- ([6,7,8,9,10],15)
-    @
-
-Another way of looking at a 'Pump' is as a non-recursive left fold paired with
-a generating function to unfold another stream (thus, a metamorphism).
-
-    @
-    num_src :: Source Int IO ()
-    num_src = do
-        forM_ [1..] $ \n -> do
-            lift . putStrLn $ "Yielding " ++ (show n)
-            yield n
-
-    enum_ex :: IO ()
-    enum_ex = do
-        e \<\- reduce send (meta (+) 0 (\x -> (x,x))) recv $ num_src >< take 5
+    source_sink_ex :: IO ([Int], Int)
+    source_sink_ex = do
+        e \<\- reduce (flip send) (enumerator []) id $ num_src >< take 10
         (unused, total) <- pump (,) e sum_snk
         putStrLn $ "Total: " ++ (show total)
         putStrLn $ "Unused: " ++ (show unused)
-        -- v => 15
-        -- extract k => 15
+        -- "Total: 15
+        -- "Unused: [6,7,8,9,10]"
     @
 
-'Pump's are still being investigated by the author so if you come up with
-something interesting, please share!
+There are doubtless more and more interesting examples of combining @Tube@s
+and @Pump@s. If you think of any, drop the author a line!
 -}
 
 type Pump a b = CofreeT (PumpF a b)
