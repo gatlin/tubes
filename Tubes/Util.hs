@@ -111,6 +111,16 @@ reduce step begin done p0 = runFreeT p0 >>= \p' -> loop p' begin where
 every :: (Foldable t, Monad m) => t b -> Tube a (Maybe b) m ()
 every xs = (each xs >< map Just) >> yield Nothing
 
+-- | Similar to 'map' except it maps a monadic function instead of a pure one.
+mapM :: Monad m => (a -> m b) -> Tube a b m r
+mapM f = for cat $ \a -> do
+    b <- lift $ f a
+    yield b
+
+-- | Evaluates and extracts a pure value from a monadic one.
+sequence :: Monad m => Tube (m a) a m r
+sequence = mapM id
+
 -- | Source of 'String's from stdin. This is mostly for debugging / ghci example purposes.
 prompt :: Source String IO ()
 prompt = do
