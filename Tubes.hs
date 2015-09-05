@@ -51,6 +51,8 @@ module Tubes
 , Tubes.Util.every
 , Tubes.Util.unyield
 , Tubes.Util.prompt
+, Tubes.Util.mapM
+, Tubes.Util.sequence
 , Tubes.Util.display
 -- * Pump
 , Pump(..)
