@@ -61,7 +61,7 @@ One interesting use of a @Pump@ is as a data stream, which can be fed into a
 
     ex1 :: IO ()
     ex1 = do
-        run $ each e >< take 10 >< map show >< display
+        run $ each e \>\< take 10 \>\< map show \>\< display
         -- displays 0-9 in the console
     @
 
