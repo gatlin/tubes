@@ -61,6 +61,7 @@ module Tubes
 , send
 , recv
 , pump
+, pumpM
 , meta
 , enumerator
 , enumerate

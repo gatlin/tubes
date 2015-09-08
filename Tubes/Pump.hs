@@ -23,6 +23,7 @@ module Tubes.Pump
 , recv
 , send
 , pump
+, pumpM
 , meta
 , enumerator
 , enumerate
@@ -210,14 +211,30 @@ pairEffect p s c = do
         Pure x -> return $ p (extract s) x
         Free gs -> pair (pairEffect p) (unwrap s) gs
 
+pairEffectM :: (Pairing f g, Comonad w, Monad m)
+            => (a -> b -> r) -> CofreeT f w (m a) -> FreeT g m b -> m r
+pairEffectM p s c = do
+    a <- extract s
+    mb <- runFreeT c
+    case mb of
+        Pure x -> return $ p a x
+        Free gs -> pair (pairEffect p) (unwrap s) gs
+
 instance Pairing (PumpF a b) (TubeF a b) where
     pair p (PumpF ak bk) tb = runT tb (\ak' -> pair p ak ak')
-                                         (\bk' -> pair p bk bk')
+                                      (\bk' -> pair p bk bk')
 
 {-|
 Given a suitably matching 'Tube' and 'Pump', you can use the latter to execute
 the former.
 -}
 pump :: (Comonad w, Monad m)
-        => (x -> y -> r) -> Pump a b w x -> Tube a b m y -> m r
+     => (x -> y -> r) -> Pump a b w x -> Tube a b m y -> m r
 pump = pairEffect
+
+{-|
+A variant of 'pump' which allows effects to be executed inside the pump as well.
+-}
+pumpM :: (Comonad w, Monad m)
+      => (x -> y -> r) -> Pump a b w (m x) -> Tube a b m y -> m r
+pumpM = pairEffectM
