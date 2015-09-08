@@ -308,6 +308,56 @@ documentation for more information. I am still exploring the uses of pumps and
 how they can usefully interact with tubes; if anyone ever actually reads this,
 stay tuned!
 
+Here are some examples I have come up with thus far:
+
+```haskell
+import Data.Functor.Identity
+
+e :: Pump (Maybe Int) Int Identity Int
+e = mkPump (Identity 0)
+        (\(Identity x) -> (Just x, Identity (x+1)))
+        const
+
+ex1 :: IO ()
+ex1 = do
+    run $ each e >< take 10 >< map show >< display
+-- displays 0-9 in the console
+
+num_src :: Source Int IO ()
+num_src = do
+    forM_ [1..] $ \n -> do
+        lift . putStrLn $ "Yielding " ++ (show n)
+        yield n
+
+enum_ex :: IO ()
+enum_ex = do
+    v <- reduce (flip send) (meta (+) 0 (\x -> (x,x))) extract $ num_src >< take 5
+    putStrLn . show $ "v = " ++ (show v)
+-- v = 15
+
+{- a 'Sink' that stops after 5 loops, or when input is exhausted.
+   This could be especially handy for parsers which need to give back
+   unused input.
+-}
+sum_snk :: Sink (Maybe Int) IO Int
+sum_snk = do
+    ns <- forM [1,2,3,4,5] $ \_ -> do
+        mn <- await
+        case mn of
+            Just n -> return [n]
+            Nothing -> return []
+    return $ sum . concat $ ns
+
+source_sink_ex :: IO ([Int], Int)
+source_sink_ex = do
+    e <- reduce (flip send) (enumerator []) id $ num_src >< take 10
+    (unused, total) <- pump (,) e sum_snk
+    putStrLn $ "Total: " ++ (show total)
+    putStrLn $ "Unused: " ++ (show unused)
+-- "Total: 15"
+-- "Unused: [6,7,8,9,10]"
+```
+
 The point ... ?
 ---
 

@@ -106,7 +106,7 @@ result of the computation and the unused input.
         (unused, total) <- pump (,) e sum_snk
         putStrLn $ "Total: " ++ (show total)
         putStrLn $ "Unused: " ++ (show unused)
-        -- "Total: 15
+        -- "Total: 15"
         -- "Unused: [6,7,8,9,10]"
     @
 

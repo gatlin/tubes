@@ -30,16 +30,17 @@ description:
     @Tube@s are coroutines which can suspend computation to yield an
     intermediate value or continue execution by requesting an upstream value.
     .
-    Also provided are @Pump@s, the comonadic dual to a @Tube@. Examples are
+    Also provided are @Pump@s, the comonadic dual to @Tube@s. Examples are
     provided of how they can be used with @Tube@s but we have almost certainly
     only scratched the surface.
     .
     Examples and more information may be found at
     <https://github.com/gatlin/tubes>.
     .
-    If I managed to upload another faulty package that does not build
-    correctly, Hackage documentation is also available at
-    <http://niltag.net/tubes>.
+    I seem to have trouble uploading packages where the documentation can be
+    built correctly on Hackage. If I have (once again) messed this up, you can
+    find Haddock documentation at <https://niltag.net/tubes>. I apologize for
+    any inconvenience!
     .
     This should compile on GHC 7.8, but the problem
     is that previous attempts at setting the versions properly rendered Hackage
@@ -88,7 +89,8 @@ library
   
   -- LANGUAGE extensions used by modules in this package.
   other-extensions:    NoMonomorphismRestriction, Rank2Types,
-                       FlexibleInstances, FlexibleContexts, DeriveFunctor
+                       FlexibleInstances, FlexibleContexts, DeriveFunctor,
+                       MultiParamTypeClasses
   
   -- Other library packages from which modules are imported.
   build-depends:       base >=4.8 && < 5,
