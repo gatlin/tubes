@@ -108,7 +108,7 @@ result of the computation and the unused input.
         putStrLn $ "Unused: " ++ (show unused)
         -- "Total: 15
         -- "Unused: [6,7,8,9,10]"
-    @o
+    @
 
 Note that when a @Pump@ and a @Tube@ are combined with 'pump', that the @Tube@
 determines control flow. @Pump@s are comonads, not monads.
