@@ -48,7 +48,7 @@ result of the computation and the unused input.</p><pre>   import Data.Functor.I
        (unused, total) &lt;- pump (,) e sum_snk
        putStrLn $ &quot;Total: &quot; ++ (show total)
        putStrLn $ &quot;Unused: &quot; ++ (show unused)
-       -- &quot;Total: 15
+       -- &quot;Total: 15&quot;
        -- &quot;Unused: [6,7,8,9,10]&quot;
    </pre><p>Note that when a <code>Pump</code> and a <code>Tube</code> are combined with <code><a href="Tubes-Pump.html#v:pump">pump</a></code>, that the <code>Tube</code>
 determines control flow. <code>Pump</code>s are comonads, not monads.</p><p>There are doubtless more and more interesting examples of combining <code>Tube</code>s
