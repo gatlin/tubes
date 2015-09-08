@@ -218,7 +218,7 @@ pairEffectM p s c = do
     mb <- runFreeT c
     case mb of
         Pure x -> return $ p a x
-        Free gs -> pair (pairEffect p) (unwrap s) gs
+        Free gs -> pair (pairEffectM p) (unwrap s) gs
 
 instance Pairing (PumpF a b) (TubeF a b) where
     pair p (PumpF ak bk) tb = runT tb (\ak' -> pair p ak ak')

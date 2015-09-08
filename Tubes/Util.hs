@@ -23,9 +23,11 @@ module Tubes.Util
 , Tubes.Util.prompt
 , Tubes.Util.display
 , Tubes.Util.unyield
+, Tubes.Util.mapM
+, Tubes.Util.sequence
 ) where
 
-import Prelude hiding (map)
+import Prelude hiding (map, mapM)
 import Control.Monad (forever, unless, replicateM_, when)
 import Control.Monad.Trans
 import Control.Monad.Trans.Free
