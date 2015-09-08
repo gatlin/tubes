@@ -30,12 +30,18 @@ description:
     @Tube@s are coroutines which can suspend computation to yield an
     intermediate value or continue execution by requesting an upstream value.
     .
+    Also provided are @Pump@s, the comonadic dual to a @Tube@. Examples are
+    provided of how they can be used with @Tube@s but we have almost certainly
+    only scratched the surface.
+    .
     Examples and more information may be found at
     <https://github.com/gatlin/tubes>.
     .
     If I managed to upload another faulty package that does not build
     correctly, Hackage documentation is also available at
-    <http://niltag.net/tubes>. This should compile on GHC 7.8, but the problem
+    <http://niltag.net/tubes>.
+    .
+    This should compile on GHC 7.8, but the problem
     is that previous attempts at setting the versions properly rendered Hackage
     unable to generate documentation. Hopefully I have this fixed but any
     advice is welcome.
