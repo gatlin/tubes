@@ -31,6 +31,7 @@ import Prelude hiding (map, mapM)
 import Control.Monad (forever, unless, replicateM_, when)
 import Control.Monad.Trans
 import Control.Monad.Trans.Free
+import Control.Monad.IO.Class
 import Data.Foldable
 import Data.Monoid (Monoid, mappend, mempty)
 import System.IO
@@ -124,18 +125,18 @@ sequence :: Monad m => Tube (m a) a m r
 sequence = mapM id
 
 -- | Source of 'String's from stdin. This is mostly for debugging / ghci example purposes.
-prompt :: Source String IO ()
+prompt :: MonadIO m => Source String m ()
 prompt = do
-    lift . putStr $ "> "
-    eof <- lift isEOF
+    liftIO . putStr $ "> "
+    eof <- liftIO isEOF
     unless eof $ do
-        str <- lift getLine
+        str <- liftIO getLine
         yield str
         prompt
 
 -- | Sink for 'String's to stdout. This is mostly for debugging / ghci example
 -- purposes.
-display :: Sink String IO ()
+display :: MonadIO m => Sink String m ()
 display = forever $ do
     it <- await
-    lift . putStrLn $ it
+    liftIO . putStrLn $ it
