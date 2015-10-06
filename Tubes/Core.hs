@@ -23,7 +23,6 @@ module Tubes.Core
 , Source(..)
 , Sink(..)
 -- * Core commands
-, run
 , await
 , yield
 -- * Control mechanisms
@@ -129,11 +128,6 @@ liftT :: (MonadTrans t, Monad m)
       => FreeT f m a
       -> t m (FreeF f a (FreeT f m a))
 liftT = lift . runFreeT
-
--- | 'run' is shorter than 'runFreeT' and who knows, maybe it\'ll change some
--- day
-run :: FreeT f m a -> m (FreeF f a (FreeT f m a))
-run = runFreeT
 
 -- | Command to wait for a new value upstream
 await :: Monad m => Tube a b m a

@@ -19,6 +19,7 @@ module Tubes.Pump
 (
   Pump(..)
 , PumpF(..)
+, run
 , mkPump
 , recv
 , send
@@ -56,7 +57,7 @@ One interesting use of a @Pump@ is as a data stream, which can be fed into a
 
     e :: Pump (Maybe Int) Int Identity Int
     e = mkPump (Identity 0)
-            (\(Identity x) -> (Just x, Identity (x+1)))
+            (\\(Identity x) -> (Just x, Identity (x+1)))
             const
 
     ex1 :: IO ()
@@ -72,13 +73,13 @@ together. (This is called a "metamorphism," hence the function "meta".)
     @
     num_src :: Source Int IO ()
     num_src = do
-        forM_ [1..] $ \n -> do
+        forM_ [1..] $ \\n -> do
             lift . putStrLn $ "Yielding " ++ (show n)
             yield n
 
     enum_ex :: IO ()
     enum_ex = do
-        v \<\- reduce (flip send) (meta (+) 0 (\x -> (x,x))) extract $ num_src >< take 5
+        v \<\- reduce (flip send) (meta (+) 0 (\\x -> (x,x))) extract $ num_src >< take 5
         putStrLn . show $ "v = " ++ (show v)
         -- v = 15
     @
@@ -93,7 +94,7 @@ result of the computation and the unused input.
     -- a 'Sink' that stops after 5 loops, or when input is exhausted
     sum_snk :: Sink (Maybe Int) IO Int
     sum_snk = do
-        ns \<\- forM [1,2,3,4,5] $ \_ -> do
+        ns \<\- forM [1,2,3,4,5] $ \\_ -> do
             mn <- await
             case mn of
                 Just n -> return [n]
@@ -129,6 +130,49 @@ instance Foldable (PumpF a b) where
     foldr f z (PumpF (_, k) _) = f k z
 
 {- |
+Runs a tube computation, producing a result value in the base monad.
+
+Because of higher-rank polymorphism, tubes created using a 'Source' and '><'
+will work with this function as well.
+
+Similarly, any tube created using '|>' and a 'Sink' will work as well. This is
+an improvement over the behavior of 'runFreeT' which gives back an unevaluated
+'FreeT' tree.
+
+An example (using @num_src@ and @src_snk@ defined previously in this
+documentation):
+
+    @
+        num_src :: Source Int IO ()
+        num_src = do
+            forM_ [1..] $ \\n -> do
+                lift . putStrLn $ "Yielding " ++ (show n)
+                yield n
+
+        sum_snk :: Sink (Maybe Int) IO Int
+        sum_snk = do
+            ns \<\- forM [1,2,3,4,5] $ \\_ -> do
+                mn <- await
+                case mn of
+                    Just n -> return [n]
+                    Nothing -> return []
+            return $ sum . concat $ ns
+
+        >>> run $ num_src |> sum_snk
+        15
+    @
+
+@15@ is the return value from @sum_snk@. Both the source and the sink have the
+ability to terminate the computation by 'return'ing, perhaps when the source is
+exhausted or the sink is full.
+-}
+run :: Monad m => Tube (Maybe a) b m r -> m r
+run tb = pump (flip const) p tb where
+    p = mkPump (Identity ())
+            (\i@(Identity ()) -> (Nothing, i))
+            const
+
+{- |
 Creates a 'Pump' for a 'Tube' using a comonadic seed value, a function to give
 it more data upon request, and a function to handle any yielded results.
 
@@ -153,8 +197,10 @@ send x p = (sendF (unwrap p)) x
 
 -- ** Utilities
 
--- | Takes a fold function, an initial value, and an unfold to produce a
--- metamorphism. Can be used to change.
+{- |
+Using the supplied functions, 'meta' will fold and then unfold a stream, hence
+its name (which is short for @metamorphism@).
+-}
 meta :: (x -> a -> x)
      -> x
      -> (x -> (b, x))
