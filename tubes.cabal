@@ -17,8 +17,8 @@ version:             1.1.0.0
 cabal-version:       >=1.10
 
 -- A short (one-line) description of the package.
-synopsis:            Effectful, iteratee-inspired stream processing based on a
-                     free monad.
+synopsis:            Compose monadic stream processing utilities in a series of
+                     tubes.
 
 -- A longer description of the package.
 description:
