@@ -17,8 +17,9 @@ version:             1.1.0.0
 cabal-version:       >=1.10
 
 -- A short (one-line) description of the package.
-synopsis:            Write stream processing combinators and compose them as a
-                     series of tubes.
+synopsis:
+    Write stream processing combinators in any monad and then compose them in a
+    series of tubes.
 
 -- A longer description of the package.
 description:
