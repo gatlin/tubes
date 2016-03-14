@@ -13,26 +13,28 @@ Stability       : experimental
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE FunctionalDependencies #-}
 
 module Tubes.Core
 (
 -- * Basic definitions
   Tube(..)
 , TubeF(..)
+, Pump(..)
+, PumpF(..)
 -- * Type aliases
 , Source(..)
 , Sink(..)
 -- * Core commands
+, run
 , await
 , yield
--- * Control mechanisms
-, each
-, Tubes.Core.for
-, (><)
-, (>-)
-, (~>)
-, (-<)
-, (|>)
+, send
+, recv
+, pump
+, pumpM
+, mkPump
 -- * @TubeF@ value constructors
 , yieldF
 , awaitF
@@ -44,17 +46,10 @@ import Control.Monad
 import Control.Monad.Trans
 import Control.Monad.Trans.Free
 import Control.Monad.Trans.Free.Church
+import Control.Comonad
+import Control.Comonad.Trans.Cofree
 import Data.Foldable
 import Data.Functor.Identity
-
--- as in Util, these are here to trivially satisfy situations I provably won't
--- get in.
-
-fix :: (a -> a) -> a
-fix f = let x = f x in x
-
-diverge :: a
-diverge = fix id
 
 {- |
 'TubeF' is the union of unary functions and binary products into a single
@@ -92,7 +87,7 @@ yieldF :: b -> k -> TubeF a b k
 yieldF x k = TubeF $ \_ y -> y (x, k)
 
 {- |
-A 'Tube' is a computation which can
+A 'TubeT' is a computation which can
 
 * 'yield' an intermediate value downstream and suspend execution; and
 
@@ -137,82 +132,137 @@ await = improveT $ liftF $ awaitF id
 yield :: Monad m => b -> Tube a b m ()
 yield x = improveT $ liftF $ yieldF x ()
 
--- | Connect a task to a continuation yielding another task; see '><'
-(>-) :: Monad m
-     => Tube a b m r
-     -> (b -> Tube b c m r)
-     -> Tube a c m r
-p >- f = liftT p >>= go where
-    go (Pure x) = return x
-    go (Free p') = runT p' (\f' -> wrap $ awaitF (\a -> (f' a) >- f))
-                           (\(v, k) -> k >< f v)
+-- ** Pumps
 
--- | Compose two tubes into a new tube.
-(><) :: Monad m
-     => Tube a b m r
-     -> Tube b c m r
-     -> Tube a c m r
-a >< b = liftT b >>= go where
-    go (Pure x) = return x
-    go (Free b') = runT b' (\f -> a >- f)
-                           (\(v, k) -> wrap $ yieldF v $ liftT k >>= go)
+type Pump a b = CofreeT (PumpF a b)
 
-infixl 3 ><
+data PumpF a b k = PumpF
+    { recvF :: (a  , k)
+    , sendF :: (b -> k)
+    } deriving Functor
 
--- | Enumerate 'yield'ed values into a continuation, creating a new 'Source'
-for :: Monad m
-    => Tube a b m r
-    -> (b -> Tube a c m s)
-    -> Tube a c m r
-for src body = liftT src >>= go where
-        go (Pure x) = return x
-        go (Free src') = runT src'
-            (\f -> wrap $ awaitF (\x -> liftT (f x) >>= go))
-            (\(v, k) -> do
-                body v
-                liftT k >>= go)
+instance Foldable (PumpF a b) where
+    foldMap f (PumpF (_, k) _) = f k
+    foldr f z (PumpF (_, k) _) = f k z
 
--- | Infix version of 'for'
-(~>) :: Monad m
-     => Tube a b m r
-     -> (b -> Tube a c m s)
-     -> Tube a c m r
-(~>) = for
+-- | Pull a value from a 'Pump', along with the rest of the 'Pump'.
+recv :: Comonad w => Pump a b w r -> (a, Pump a b w r)
+recv p = recvF . unwrap $ p
 
--- | Convert a list to a 'Source'
-each :: (Monad m, Foldable t) => t b -> Tube a b m ()
-each as = Data.Foldable.mapM_ yield as
-
--- | Insert a value into a 'Sink'
-(-<) :: Monad m
-     => a
-     -> Sink a m b
-     -> Sink a m b
-x -< snk = liftT snk >>= go where
-    go (Pure y) = return y
-    go (Free snk') = runT snk' (\f -> f x) diverge
-
--- | Implementation of '|>' but without the type constraints.
-(\|>) :: Monad m
-      => Tube a b m r
-      -> Tube (Maybe b) c m s
-      -> Tube (Maybe b) c m s
-src \|> snk = liftT snk >>= goSnk where
-    goSnk (Pure x) = return x
-    goSnk (Free snk') = runT snk'
-        (\fSnk -> (liftT src) >>= goSrc fSnk)
-        diverge
-
-    goSrc f (Pure _) = f Nothing
-    goSrc f (Free snk') = runT snk' diverge $
-        \(v,k) -> k \|> (f (Just v))
+-- | Send a value into a 'Pump', effectively re-seeding the stream.
+send :: Comonad w => b -> Pump a b w r -> Pump a b w r
+send x p = (sendF (unwrap p)) x
 
 {- |
-Connects a 'Source' to a 'Sink', finishing when either the 'Source' is
-exhausted or the 'Sink' terminates.
+Creates a 'Pump' for a 'Tube' using a comonadic seed value, a function to give
+it more data upon request, and a function to handle any yielded results.
+
+Values received from the 'Tube' may be altered and sent back into the tube,
+hence this mechanism does act like something of a pump.
 -}
-(|>) :: Monad m
-     => Tube x b m r
-     -> Sink (Maybe b) m s
-     -> Sink (Maybe b) m s
-(|>) = (\|>)
+mkPump :: Comonad w
+       => w a
+       -> (w a -> (b, w a))
+       -> (w a -> c -> w a)
+       -> Pump b c w a
+mkPump x r s = coiterT cf x where
+    cf wa = PumpF (r wa) (s wa)
+
+{- |
+Lovingly stolen from Dan Piponi and David Laing. This models a poor man\'s
+adjunction: it allows adjoint functors to essentially annihilate one another
+and produce a final value.
+
+If this or something equivalent turns up in a separate package I will happily
+switch to using that.
+-}
+class (Functor f, Functor g) => Pairing f g | f -> g, g -> f where
+    pair :: (a -> b -> r) -> f a -> g b -> r
+
+instance Pairing Identity Identity where
+    pair f (Identity a) (Identity b) = f a b
+
+instance Pairing ((->) a) ((,) a) where
+    pair p f = uncurry (p . f)
+
+instance Pairing ((,) a) ((->) a) where
+    pair p f g = p (snd f) (g (fst f))
+
+pairEffect :: (Pairing f g, Comonad w, Monad m)
+           => (a -> b -> r) -> CofreeT f w a -> FreeT g m b -> m r
+pairEffect p s c = do
+    mb <- runFreeT c
+    case mb of
+        Pure x -> return $ p (extract s) x
+        Free gs -> pair (pairEffect p) (unwrap s) gs
+
+pairEffectM :: (Pairing f g, Comonad w, Monad m)
+            => (a -> b -> r) -> CofreeT f w (m a) -> FreeT g m b -> m r
+pairEffectM p s c = do
+    a <- extract s
+    mb <- runFreeT c
+    case mb of
+        Pure x -> return $ p a x
+        Free gs -> pair (pairEffectM p) (unwrap s) gs
+
+instance Pairing (PumpF a b) (TubeF a b) where
+    pair p (PumpF ak bk) tb = runT tb (\ak' -> pair p ak ak')
+                                      (\bk' -> pair p bk bk')
+
+{-|
+Given a suitably matching 'Tube' and 'Pump', you can use the latter to execute
+the former.
+-}
+pump :: (Comonad w, Monad m)
+     => (x -> y -> r) -> Pump a b w x -> Tube a b m y -> m r
+pump = pairEffect
+
+{-|
+A variant of 'pump' which allows effects to be executed inside the pump as well.
+-}
+pumpM :: (Comonad w, Monad m)
+      => (x -> y -> r) -> Pump a b w (m x) -> Tube a b m y -> m r
+pumpM = pairEffectM
+
+{- |
+Runs a tube computation, producing a result value in the base monad.
+
+Because of higher-rank polymorphism, tubes created using a 'Source' and '><'
+will work with this function as well.
+
+Similarly, any tube created using '|>' and a 'Sink' will work as well. This is
+an improvement over the behavior of 'runFreeT' which gives back an unevaluated
+'FreeT' tree.
+
+An example (using @num_src@ and @src_snk@ defined previously in this
+documentation):
+
+    @
+        num_src :: Source Int IO ()
+        num_src = do
+            forM_ [1..] $ \\n -> do
+                lift . putStrLn $ "Yielding " ++ (show n)
+                yield n
+
+        sum_snk :: Sink (Maybe Int) IO Int
+        sum_snk = do
+            ns \<\- forM [1,2,3,4,5] $ \\_ -> do
+                mn <- await
+                case mn of
+                    Just n -> return [n]
+                    Nothing -> return []
+            return $ sum . concat $ ns
+
+        >>> run $ num_src |> sum_snk
+        15
+    @
+
+@15@ is the return value from @sum_snk@. Both the source and the sink have the
+ability to terminate the computation by 'return'ing, perhaps when the source is
+exhausted or the sink is full.
+-}
+run :: Monad m => Tube (Maybe a) b m r -> m r
+run tb = pump (flip const) p tb where
+    p = mkPump (Identity ())
+            (\i@(Identity ()) -> (Nothing, i))
+            const

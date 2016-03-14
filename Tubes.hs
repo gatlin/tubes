@@ -7,17 +7,8 @@ License         : GPL-3
 Maintainer      : gatlin@niltag.net
 Stability       : experimental
 
-Write effect-ful stream processing functions and compose them into a series of
-tubes.
-
-This exists primarily for my own education. It is updated often as I try
-things and is probably, at this moment, wrong.
-
-My goals were to
-
-* learn more about iteratees and stream processing; and
-
-* explore the relationships between functions, pairs, sum types, and products.
+Compose stream processing pipelines using a series of tubes. This package is
+similar to the venerable 'pipes' package, except 
 -}
 
 module Tubes
@@ -32,8 +23,6 @@ module Tubes
 , run
 , await
 , yield
-, each
-, Tubes.Core.for
 , (~>)
 , (>-)
 , (><)
@@ -42,6 +31,8 @@ module Tubes
 , liftT
 -- * Utilities
 , cat
+, Tubes.Util.for
+, Tubes.Util.each
 , Tubes.Util.map
 , Tubes.Util.drop
 , Tubes.Util.take
@@ -76,7 +67,6 @@ import Control.Monad.Trans.Free
 
 import Tubes.Core
 import Tubes.Util
-import Tubes.Pump
 
 {- $tubeintro
 A 'Tube' is a computation that can yield multiple intermediate values or await
