@@ -11,7 +11,7 @@ name:                tubes
 -- PVP summary:      +-+------- breaking API changes
 --                   | | +----- non-breaking API additions
 --                   | | | +--- code changes with no API change
-version:             1.1.0.0
+version:             2.0.0.0
 
 -- Constraint on the version of Cabal needed to build this package.
 cabal-version:       >=1.10
@@ -83,13 +83,13 @@ source-repository head
 
 library
   -- Modules exported by the library.
-  exposed-modules:     Tubes, Tubes.Core, Tubes.Util, Tubes.Pump
+  exposed-modules:     Tubes
   
   -- Modules included in this library but not exported.
   -- other-modules:       
   
   -- LANGUAGE extensions used by modules in this package.
-  other-extensions:    NoMonomorphismRestriction, Rank2Types,
+  other-extensions:    NoMonomorphismRestriction, RankNTypes,
                        FlexibleInstances, FlexibleContexts, DeriveFunctor,
                        MultiParamTypeClasses
   
@@ -98,7 +98,9 @@ library
                        transformers >=0.3,
                        free >=4.12,
                        mtl,
-                       comonad
+                       comonad,
+                       contravariant,
+                       profunctors
   
   -- Directories containing source files.
   -- hs-source-dirs:      

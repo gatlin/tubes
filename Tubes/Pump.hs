@@ -243,9 +243,6 @@ class (Functor f, Functor g) => Pairing f g | f -> g, g -> f where
 instance Pairing Identity Identity where
     pair f (Identity a) (Identity b) = f a b
 
-instance Pairing ((->) a) ((,) a) where
-    pair p f = uncurry (p . f)
-
 instance Pairing ((,) a) ((->) a) where
     pair p f g = p (snd f) (g (fst f))
 

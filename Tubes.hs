@@ -12,12 +12,6 @@ tubes.
 
 This exists primarily for my own education. It is updated often as I try
 things and is probably, at this moment, wrong.
-
-My goals were to
-
-* learn more about iteratees and stream processing; and
-
-* explore the relationships between functions, pairs, sum types, and products.
 -}
 
 module Tubes
@@ -25,102 +19,84 @@ module Tubes
 -- $tubeintro
 -- * Tubes
   Tube(..)
-, TubeF(..)
-, Source(..)
-, Sink(..)
--- * Core infrastructure
-, run
-, await
+, runTube
 , yield
-, each
-, Tubes.Core.for
-, (~>)
-, (>-)
-, (><)
-, (|>)
-, (-<)
-, liftT
+, await
+, Source(..)
+, reduce
+, Sink(..)
+-- * Pumps
+, Pump(..)
+, send
+, recv
+, pump
+, meta
 -- * Utilities
-, cat
+, stream
+, streamM
+, Tubes.Util.cat
+, Tubes.Util.for
+, Tubes.Util.each
+, Tubes.Util.every
+, (~>)
 , Tubes.Util.map
 , Tubes.Util.drop
 , Tubes.Util.take
 , Tubes.Util.takeWhile
 , Tubes.Util.filter
-, Tubes.Util.reduce
-, Tubes.Util.every
 , Tubes.Util.unyield
-, Tubes.Util.prompt
 , Tubes.Util.mapM
 , Tubes.Util.sequence
-, Tubes.Util.display
--- * Pump
-, Pump(..)
-, PumpF(..)
-, mkPump
-, send
-, recv
-, pump
-, pumpM
-, meta
-, enumerator
-, enumerate
+-- * Miscellaneous
+, prompt
+, display
 -- * Re-exports
-, lift -- re-exported from Control.Monad.Trans.Free
-, runFreeT -- re-exported from Control.Monad.Trans.Free
-) where
-
-import Prelude hiding (map, fold, print, filter, take)
-import Control.Monad.Trans.Class
-import Control.Monad.Trans.Free
+, contramap
+, (>$<)
+, divide
+, conquer
+, choose
+, lose
+)
+where
 
 import Tubes.Core
 import Tubes.Util
-import Tubes.Pump
+import Tubes.Source
+import Tubes.Sink
 
-{- $tubeintro
-A 'Tube' is a computation that can yield multiple intermediate values or await
-intermediate inputs before computing a final result. Any monadic function may
-be turned into a 'Tube'.
+import System.IO
+import Control.Monad.IO.Class
+import Control.Monad (unless, forever)
 
-'Tube's may be composed in different ways. For instance, in ghci:
+import Data.Functor.Contravariant
+import Data.Functor.Contravariant.Divisible
 
-    @
-    >>> run $ for (each [1..4] >< map show) $ lift . putStrLn
-    1
-    2
-    3
-    4
-    @
+import Prelude hiding (map, filter, take, drop, takeWhile, sequence)
+import qualified Prelude as P
 
-Here, 'each' converts a 'Foldable' into a 'Source' of values; 'for' performs a
-computation with each value. Another example, using two built-in 'Tube's for
-convenience:
+-- | Source of 'String's from stdin. This is mostly for debugging / ghci example purposes.
+prompt :: MonadIO m => Source m String
+prompt = Source $ do
+    liftIO . putStr $ "> "
+    eof <- liftIO isEOF
+    unless eof $ do
+        str <- liftIO getLine
+        yield str
+        sample prompt
 
-    @
-    >>> run $ prompt >\< filter (/= "Die Antwoord") >\< map (++ " is bad") >\< print
-    > dubstep
-    dubstep is bad
-    > the sun
-    the sun is bad
-    > Die Antwoord
-    > this example
-    this example is bad
-    @
+-- | Sink for 'String's to stdout. This is mostly for debugging / ghci example
+-- purposes.
+display :: MonadIO m => Sink m String
+display = Sink $ forever $ do
+    it <- await
+    liftIO . putStrLn $ it
 
-A few stream processing combinators are provided for mapping, filtering,
-taking, and other basic operations.
+insult :: MonadIO m => Sink m String
+insult     = (++ " is a knob") >$< display
 
-For those times when you want to 'reduce' a stream, you can like so:
+compliment :: MonadIO m => Sink m String
+compliment = (++ " is totally rad") >$< display
 
-    @
-    >>> reduce (+) 0 id (each [1..10])
-    55
-    @
-
-'><' is useful for combining 'Tube's which all have the same return value -
-most often @()@ simply because every 'Source' will have that value.
-
-There is more in the library not covered here, and you are encouraged to take
-a look around.
--}
+output :: MonadIO m => Sink m String
+output = divide (\x -> (x,x)) insult compliment

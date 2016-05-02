@@ -1,7 +1,7 @@
 {-
 Module          : Tubes.Core
 Description     : Fundamental types and operations.
-Copyright       : (c) 2014, 2015 Gatlin Johnson <gatlin@niltag.net>
+Copyright       : (c) 2014-2016 Gatlin Johnson <gatlin@niltag.net>
 
 License         : GPL-3
 Maintainer      : gatlin@niltag.net
@@ -9,46 +9,103 @@ Stability       : experimental
 -}
 
 {-# LANGUAGE NoMonomorphismRestriction #-}
-{-# LANGUAGE Rank2Types #-}
+{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE DeriveFunctor #-}
 
 module Tubes.Core
 (
--- * Basic definitions
   Tube(..)
 , TubeF(..)
--- * Type aliases
-, Source(..)
-, Sink(..)
--- * Core commands
 , await
 , yield
--- * Control mechanisms
-, each
-, Tubes.Core.for
-, (><)
 , (>-)
-, (~>)
-, (-<)
-, (|>)
--- * @TubeF@ value constructors
-, yieldF
-, awaitF
--- * Miscellaneous
+, (><)
 , liftT
-) where
+, diverge
+, awaitF
+, yieldF
+, Pump(..)
+, PumpF(..)
+, pump
+, send
+, recv
+, meta
+, stream
+, streamM
+, runTube
+)
+where
 
 import Control.Monad
 import Control.Monad.Trans
 import Control.Monad.Trans.Free
 import Control.Monad.Trans.Free.Church
+
+import Control.Comonad
+import Control.Comonad.Trans.Cofree
+
+import Control.Applicative
+
 import Data.Foldable
 import Data.Functor.Identity
 
--- as in Util, these are here to trivially satisfy situations I provably won't
--- get in.
+import Data.Void
+
+-- * Tubes
+
+newtype TubeF a b k = TubeF {
+    runTubeF :: forall r.
+                 ((a -> k) -> r)
+              -> ((b ,  k) -> r)
+              -> r
+} deriving (Functor)
+
+awaitF :: (a -> k) -> TubeF a b k
+awaitF f = TubeF $ \a _ -> a f
+
+yieldF :: b -> k -> TubeF a b k
+yieldF x k = TubeF $ \_ y -> y (x, k)
+
+type Tube a b = FreeT (TubeF a b)
+
+liftT :: (MonadTrans t, Monad m)
+      => FreeT f m a
+      -> t m (FreeF f a (FreeT f m a))
+liftT = lift . runFreeT
+
+await :: Monad m => Tube a b m a
+await = improveT $ liftF $ awaitF id
+
+yield :: Monad m => b -> Tube a b m ()
+yield x = improveT $ liftF $ yieldF x ()
+
+(>-)
+    :: Monad m
+    => Tube a b m r
+    -> (b -> Tube b c m r)
+    -> Tube a c m r
+p >- f = liftT p >>= go where
+    go (Pure x) = return x
+    go (Free p') = runTubeF p' (\f' -> wrap $ awaitF (\a -> (f' a) >- f))
+                               (\(v,k) -> k >< f v)
+
+infixl 3 >-
+
+(><)
+    :: Monad m
+    => Tube a b m r
+    -> Tube b c m r
+    -> Tube a c m r
+a >< b = liftT b >>= go where
+    go (Pure x) = return x
+    go (Free b') = runTubeF b' (\f -> a >- f)
+                               (\(v,k) -> wrap $ yieldF v $ liftT k >>= go)
+
+infixl 3 ><
 
 fix :: (a -> a) -> a
 fix f = let x = f x in x
@@ -56,163 +113,97 @@ fix f = let x = f x in x
 diverge :: a
 diverge = fix id
 
-{- |
-'TubeF' is the union of unary functions and binary products into a single
-type, here defined with a Boehm-Berarducci encoding.
+-- * Pumps
 
-This type is equivalent to the following:
+data PumpF a b k = PumpF
+    { sendF :: (b -> k)
+    , recvF :: (a  , k)
+    } deriving (Functor)
 
-    @
-        data TubeF a b k
-            = Await (a -> k) -- :: (a -> k) -> TubeF a b k
-            | Yield (b  , k) -- :: (b  , k) -> TubeF a b k
-    @
+type Pump a b = CofreeT (PumpF a b)
 
-The type signatures for the two value constructors should bear a strong
-resemblance to the actual type signature of 'runT'. Instead of encoding
-tubes as structures which build up when composed, a 'TubeF' is a control
-flow mechanism which picks one of two provided continuations.
+send :: Comonad w => b -> Pump a b w r -> Pump a b w r
+send x p = (sendF (unwrap p)) x
 
-People using this library should never have to contend with these details
-but it is worth mentioning.
- -}
-newtype TubeF a b k = TubeF {
-    runT :: forall r.
-             ((a -> k) -> r)
-         ->  ((b,   k) -> r)
-         ->  r
-} deriving (Functor)
+recv :: Comonad w => Pump a b w r -> (a, Pump a b w r)
+recv p = recvF . unwrap $ p
 
--- | Constructor for sink computations
-awaitF :: (a -> k) -> TubeF a b k
-awaitF f = TubeF $ \a _ -> a f
+pump
+    :: Comonad w
+    => w r
+    -> (w r -> (a, w r))
+    -> (w r -> b -> w r)
+    -> Pump a b w r
+pump x s r = coiterT cf x where
+    cf wa = PumpF (r wa) (s wa)
 
--- | Constructor for source computations
-yieldF :: b -> k -> TubeF a b k
-yieldF x k = TubeF $ \_ y -> y (x, k)
+meta :: (x -> a -> x) -> (x -> (b, x)) -> x -> x
+meta step done init = extract $ pump (Identity init)
+    (\(Identity xs) -> Identity <$> done xs)
+    (\(Identity xs) x -> Identity (step xs x))
 
-{- |
-A 'Tube' is a computation which can
+-- * Tubes and Pumps are adjoint!
+-- I considered using the @adjunctions@ package but I don't need all that
+-- power.
 
-* 'yield' an intermediate value downstream and suspend execution; and
+class (Functor f, Functor g) => Adjoint f g | f -> g, g -> f where
+    adj :: (a -> b -> r) -> f a -> g b -> r
 
-* 'await' a value from upstream, deferring execution until it is received.
+instance Adjoint Identity Identity where
+    adj f (Identity a) (Identity b) = f a b
 
-Moreover, individual 'Tube's may be freely composed into larger ones, so long
-as their types match. Thus, one may write small, reusable building blocks and
-construct efficient stream process pipelines.
+instance Adjoint ((->) a) ((,) a) where
+    adj p f = uncurry (p . f)
 
-Since a much better engineered, more popular, and decidedly more mature
-library already uses the term "pipes" I have opted instead to think of my work
-as a series of tubes.
--}
-type Tube   a b     = FreeT  (TubeF a b)
+instance Adjoint ((,) a) ((->) a) where
+    adj p f g = p (snd f) (g (fst f))
 
--- ** Type aliases
+instance Adjoint (PumpF a b) (TubeF a b) where
+    adj p (PumpF bk ak) tb = runTubeF tb
+        (\ak' -> adj p ak ak')
+        (\bk' -> adj p bk bk')
 
--- | A computation which only 'yield's and never 'await's
-type Source   b m r = forall x. Tube x b m r
+_stream
+    :: (Adjoint f g, Comonad w, Monad m)
+    => (a -> b -> r) -> CofreeT f w a -> FreeT g m b -> m r
+_stream p s c = do
+    mb <- runFreeT c
+    case mb of
+        Pure x -> return $ p (extract s) x
+        Free gs -> adj (_stream p) (unwrap s) gs
 
--- | A computation which only 'await's and never 'yield's.
-type Sink   a   m r = forall x. Tube a x m r
+_streamM
+    :: (Adjoint f g, Comonad w, Monad m)
+    => (a -> b -> r) -> CofreeT f w (m a) -> FreeT g m b -> m r
+_streamM p s c = do
+    a <- extract s
+    mb <- runFreeT c
+    case mb of
+        Pure x -> return $ p a x
+        Free gs -> adj (_streamM p) (unwrap s) gs
 
-{- |
-This performs a neat trick: a 'Tube' with a return type @a@ will be
-turned into a new 'Tube' containing the underlying 'TubeF' value.
+-- With specialized types
+stream
+    :: (Monad m, Comonad w)
+    => (a -> b -> r)
+    -> Pump c d w a
+    -> Tube c d m b
+    -> m r
+stream = _stream
 
-In this way the '><' and '>-' functions can replace the @()@ return value with
-a continuation and recursively traverse the computation until a final result
-is reached.
--}
-liftT :: (MonadTrans t, Monad m)
-      => FreeT f m a
-      -> t m (FreeF f a (FreeT f m a))
-liftT = lift . runFreeT
+streamM
+    :: (Monad m, Comonad w)
+    => (a -> b -> r)
+    -> Pump c d w (m a)
+    -> Tube c d m    b
+    -> m r
+streamM = _streamM
 
--- | Command to wait for a new value upstream
-await :: Monad m => Tube a b m a
-await = improveT $ liftF $ awaitF id
-
--- | Command to send a value downstream
-yield :: Monad m => b -> Tube a b m ()
-yield x = improveT $ liftF $ yieldF x ()
-
--- | Connect a task to a continuation yielding another task; see '><'
-(>-) :: Monad m
-     => Tube a b m r
-     -> (b -> Tube b c m r)
-     -> Tube a c m r
-p >- f = liftT p >>= go where
-    go (Pure x) = return x
-    go (Free p') = runT p' (\f' -> wrap $ awaitF (\a -> (f' a) >- f))
-                           (\(v, k) -> k >< f v)
-
--- | Compose two tubes into a new tube.
-(><) :: Monad m
-     => Tube a b m r
-     -> Tube b c m r
-     -> Tube a c m r
-a >< b = liftT b >>= go where
-    go (Pure x) = return x
-    go (Free b') = runT b' (\f -> a >- f)
-                           (\(v, k) -> wrap $ yieldF v $ liftT k >>= go)
-
-infixl 3 ><
-
--- | Enumerate 'yield'ed values into a continuation, creating a new 'Source'
-for :: Monad m
-    => Tube a b m r
-    -> (b -> Tube a c m s)
-    -> Tube a c m r
-for src body = liftT src >>= go where
-        go (Pure x) = return x
-        go (Free src') = runT src'
-            (\f -> wrap $ awaitF (\x -> liftT (f x) >>= go))
-            (\(v, k) -> do
-                body v
-                liftT k >>= go)
-
--- | Infix version of 'for'
-(~>) :: Monad m
-     => Tube a b m r
-     -> (b -> Tube a c m s)
-     -> Tube a c m r
-(~>) = for
-
--- | Convert a list to a 'Source'
-each :: (Monad m, Foldable t) => t b -> Tube a b m ()
-each as = Data.Foldable.mapM_ yield as
-
--- | Insert a value into a 'Sink'
-(-<) :: Monad m
-     => a
-     -> Sink a m b
-     -> Sink a m b
-x -< snk = liftT snk >>= go where
-    go (Pure y) = return y
-    go (Free snk') = runT snk' (\f -> f x) diverge
-
--- | Implementation of '|>' but without the type constraints.
-(\|>) :: Monad m
-      => Tube a b m r
-      -> Tube (Maybe b) c m s
-      -> Tube (Maybe b) c m s
-src \|> snk = liftT snk >>= goSnk where
-    goSnk (Pure x) = return x
-    goSnk (Free snk') = runT snk'
-        (\fSnk -> (liftT src) >>= goSrc fSnk)
-        diverge
-
-    goSrc f (Pure _) = f Nothing
-    goSrc f (Free snk') = runT snk' diverge $
-        \(v,k) -> k \|> (f (Just v))
-
-{- |
-Connects a 'Source' to a 'Sink', finishing when either the 'Source' is
-exhausted or the 'Sink' terminates.
--}
-(|>) :: Monad m
-     => Tube x b m r
-     -> Sink (Maybe b) m s
-     -> Sink (Maybe b) m s
-(|>) = (\|>)
+runTube
+    :: Monad m
+    => Tube Void Void m r
+    -> m r
+runTube = stream (flip const)
+                 (pump (Identity ())
+                       (\i -> (diverge, i))
+                       const)
