@@ -1,3 +1,5 @@
+{-# LANGUAGE RankNTypes #-}
+
 {- |
 Module          : Tubes
 Description     : All-encompassing module.
@@ -72,8 +74,14 @@ import Control.Monad (unless, forever)
 import Data.Functor.Contravariant
 import Data.Functor.Contravariant.Divisible
 
+import Data.Profunctor
+
 import Prelude hiding (map, filter, take, drop, takeWhile, sequence)
 import qualified Prelude as P
+
+import Data.Functor.Identity
+import Control.Comonad
+import Control.Comonad.Trans.Cofree
 
 -- | Source of 'String's from stdin. This is mostly for debugging / ghci example purposes.
 prompt :: MonadIO m => Source m String
@@ -100,3 +108,25 @@ compliment = (++ " is totally rad") >$< display
 
 output :: MonadIO m => Sink m String
 output = divide (\x -> (x,x)) insult compliment
+
+test1 :: IO ()
+test1 = runTube $ sample prompt >< take 3 >< forever (pour output)
+
+p = pump (Identity 0) (\i@(Identity n) -> (n,i))
+                      (\(Identity n) n' -> Identity (n + n'))
+
+-- Can we make Tubes profunctors?
+newtype T m a b = T {
+    unT :: Tube a b m ()
+}
+
+instance Monad m => Profunctor (T m) where
+    lmap f (T tube) = T $ map f >< tube
+    rmap f (T tube) = T $ tube >< map f
+
+-- Can we make Pumps profunctors?
+newtype P w a b = P {
+    unP :: forall x. Pump b a w x
+}
+
+

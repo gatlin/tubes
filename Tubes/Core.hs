@@ -55,6 +55,12 @@ import Data.Functor.Identity
 
 import Data.Void
 
+fix :: (a -> a) -> a
+fix f = let x = f x in x
+
+diverge :: a
+diverge = fix id
+
 -- * Tubes
 
 newtype TubeF a b k = TubeF {
@@ -106,12 +112,6 @@ a >< b = liftT b >>= go where
                                (\(v,k) -> wrap $ yieldF v $ liftT k >>= go)
 
 infixl 3 ><
-
-fix :: (a -> a) -> a
-fix f = let x = f x in x
-
-diverge :: a
-diverge = fix id
 
 -- * Pumps
 
