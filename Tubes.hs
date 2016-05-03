@@ -56,6 +56,7 @@ module Tubes
 , prompt
 , display
 -- * Re-exports
+, liftT
 , runFreeT
 )
 where
