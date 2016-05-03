@@ -1,5 +1,4 @@
 {-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE Arrows #-}
 
 
 {- |
@@ -70,6 +69,10 @@ import Tubes.Channel
 import System.IO
 import Control.Monad.IO.Class
 import Control.Monad (unless, forever)
+
+{- $tubeintro
+TODO: Write this
+-}
 
 -- | Source of 'String's from stdin. This is mostly for debugging / ghci example purposes.
 prompt :: MonadIO m => Source m String
