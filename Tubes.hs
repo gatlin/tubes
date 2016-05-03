@@ -173,31 +173,3 @@ display :: MonadIO m => Sink m String
 display = Sink $ forever $ do
     it <- await
     liftIO . putStrLn $ it
-
-src1 :: Source IO String
-src1 = Source $ each ["line A1", "line A2", "line A3"]
-
-src2 :: Source IO String
-src2 = Source $ each ["line B1", "line B2", "line B3", "line B4"]
-
--- Synchronously merge input
-src3 :: Source IO String
-src3 = src1 <> src2
-
-writeToFile :: Sink IO String
-writeToFile = Sink $ do
-    line <- await
-    liftIO . putStrLn $ "Totally writing this to a file: " ++ line
-
-writeToConsole :: Sink IO String
-writeToConsole = Sink $ do
-    line <- await
-    liftIO . putStrLn $ "Console out: " ++ line
-
--- Merge outputs together
-writeOut :: Sink IO String
-writeOut = writeToFile <> writeToConsole
-
--- And make outputs re-forward their input data
-writeOut' :: Channel IO String String
-writeOut' = fromSink writeOut
