@@ -20,11 +20,12 @@ where
 import Prelude hiding (map)
 import qualified Prelude as P
 
-import Control.Monad.IO.Class 
+import Control.Monad.IO.Class
 import Control.Monad.Trans (MonadTrans(..), lift)
 import Control.Monad.Trans.Free
 import Control.Monad (MonadPlus(..))
 import Control.Applicative (Applicative(..), Alternative(..))
+import Data.Semigroup
 
 import System.IO
 
@@ -35,12 +36,37 @@ import Tubes.Util
 
 {- |
 An exhaustible source of values parameterized over a base monad. It never
-'await's.
+'await's, it only 'yield's.
 
-The @newtype@ formulation is to allow type-juggling. Because of how 'yield'
-works, any 'Tube' which 'yield's must have an ultimate return type @()@ so this
-is essentially noise. Instead, a 'Source' is a functor (and more) based on the
-type of values it emits downstream.
+'Source's are monad transformers in their own right, as they are possibly
+finite.
+
+'Source's may be synchronously merged as monoids:
+
+    @
+        import Data.Monoid
+
+        src1 :: Source IO String
+        src1 = Source $ each ["line A1", "line A2", "line A3"]
+
+        src2 :: Source IO String
+        src2 = Source $ each ["line B1", "line B2", "line B3", "line B4"]
+
+        src3 :: Source IO String
+        src3 = src1 <> src2
+
+        main :: IO ()
+        main = runTube $ sample (src1 <> src2) >< pour display
+        -- line A1
+        -- line B1
+        -- line A2
+        -- line B2
+        -- line A3
+        -- line B3
+        -- line B4
+    @
+
+If one source runs out, the other will continue until completion.
 -}
 newtype Source m a = Source {
     sample :: Tube () a m ()
@@ -65,9 +91,20 @@ instance (Monad m) => Monad (Source m) where
 instance Monad m => Alternative (Source m) where
     empty = Source $ return ()
 
-    s1 <|> s2 = Source $ do
-        sample s1
-        sample s2
+    -- This is hideous but amazing
+    s1 <|> s2 = Source $ loop (sample s1) (sample s2) where
+        loop s1 s2 = do
+            mR1 <- lift $ unyield s1
+            case mR1 of
+                Nothing -> s2
+                Just (v1,s1') -> do
+                    yield v1
+                    mR2 <- lift $ unyield s2
+                    case mR2 of
+                        Nothing -> s1'
+                        Just (v2, s2') -> do
+                            yield v2
+                            loop s1' s2'
 
 instance MonadTrans Source where
     lift m = Source $ do
@@ -85,9 +122,11 @@ instance (Monad m) => Monoid (Source m a) where
     mempty = empty
     mappend = (<|>)
 
+instance (Monad m) => Semigroup (Source m a) where
+    (<>) = mappend
+
 {- |
-Strict left-fold of a stream. Note that the actual return type of the source
-is not relevant, only the intermediate yield type.
+Strict left-fold of a 'Source', using a 'Pump' internally.
 -}
 reduce
     :: Monad m

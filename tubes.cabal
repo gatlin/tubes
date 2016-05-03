@@ -100,7 +100,8 @@ library
                        mtl,
                        comonad,
                        contravariant,
-                       profunctors
+                       profunctors,
+                       semigroups
   
   -- Directories containing source files.
   -- hs-source-dirs:      

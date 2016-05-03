@@ -22,6 +22,7 @@ module Tubes.Core
 , TubeF(..)
 , await
 , yield
+, halt
 , (>-)
 , (><)
 , liftT
@@ -94,11 +95,17 @@ composed in series, so long as their type arguments agree.
 -}
 type Tube a b = FreeT (TubeF a b)
 
+-- | Command telling a 'Tube' computation to pause and await upstream data.
 await :: Monad m => Tube a b m a
 await = improveT $ liftF $ awaitF id
 
+-- | Command telling a 'Tube' computation to yield data downstream and pause.
 yield :: Monad m => b -> Tube a b m ()
 yield x = improveT $ liftF $ yieldF x ()
+
+-- | Command telling a 'Tube' with base type @()@ to simply stop.
+halt :: Monad m => Tube a b m ()
+halt = return ()
 
 liftT :: (MonadTrans t, Monad m)
       => FreeT f m a
