@@ -1,6 +1,5 @@
 {-# LANGUAGE RankNTypes #-}
 
-
 {- |
 Module          : Tubes
 Description     : All-encompassing module.
@@ -33,8 +32,8 @@ module Tubes
 , Pump(..)
 , send
 , recv
-, pump
-, meta
+, pumpT
+, lfold
 -- * Utilities
 , stream
 , streamM
@@ -90,4 +89,3 @@ display :: MonadIO m => Sink m String
 display = Sink $ forever $ do
     it <- await
     liftIO . putStrLn $ it
-

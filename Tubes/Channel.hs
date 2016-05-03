@@ -1,3 +1,12 @@
+{-
+Module          : Tubes.Channel
+Description     : Defines the Channel type.
+Copyright       : (c) 2014-2016 Gatlin Johnson <gatlin@niltag.net>
+
+License         : GPL-3
+Maintainer      : gatlin@niltag.net
+Stability       : experimental
+-}
 module Tubes.Channel
 (
   Channel(..)
@@ -30,9 +39,9 @@ instance Monad m => Category (Channel m) where
     c_bc . c_ab = Channel $ tune c_ab >< tune c_bc
 
 arg :: a -> Pump a b Identity (Maybe b)
-arg x = pump (Identity Nothing)
-            (\i@(Identity _) -> (x, i))
+arg x = pumpT (Identity Nothing)
             (\_ x -> Identity (Just x))
+            (\i@(Identity _) -> (x, i))
 
 pass
     :: Monad m

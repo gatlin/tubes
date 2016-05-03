@@ -1,3 +1,12 @@
+{-
+Module          : Tubes.Sink
+Description     : Defines the Sink type.
+Copyright       : (c) 2014-2016 Gatlin Johnson <gatlin@niltag.net>
+
+License         : GPL-3
+Maintainer      : gatlin@niltag.net
+Stability       : experimental
+-}
 {-# LANGUAGE RankNTypes #-}
 
 module Tubes.Sink

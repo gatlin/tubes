@@ -30,10 +30,9 @@ module Tubes.Core
 , yieldF
 , Pump(..)
 , PumpF(..)
-, pump
+, pumpT
 , send
 , recv
-, meta
 , stream
 , streamM
 , runTube
@@ -54,14 +53,26 @@ import Control.Applicative
 import Data.Foldable
 import Data.Functor.Identity
 
-fix :: (a -> a) -> a
-fix f = let x = f x in x
-
-diverge :: a
-diverge = fix id
-
 -- * Tubes
 
+{- |
+@TubeF@ defines the language of 'Tube's - namely, 'yield' and 'await'.
+
+This type is merely the CPS-encoded version of the following much friendlier
+data type:
+
+    @
+        data TubeF a b k
+            = Await (a -> k)
+            | Yield (b  , k)
+            deriving (Functor)
+    @
+
+This says: a tube computation is either paused awaiting upstream data, or
+paused yielding data downstream. The free monad transformer fleshes out the
+other cases, namely having finished with a final result value or wrapping a
+lower monad.
+-}
 newtype TubeF a b k = TubeF {
     runTubeF :: forall r.
                  ((a -> k) -> r)
@@ -69,18 +80,19 @@ newtype TubeF a b k = TubeF {
               -> r
 } deriving (Functor)
 
+-- | Value constructor for the first 'TubeF' case.
 awaitF :: (a -> k) -> TubeF a b k
 awaitF f = TubeF $ \a _ -> a f
 
+-- | Value constructor for the second 'TubeF' case.
 yieldF :: b -> k -> TubeF a b k
 yieldF x k = TubeF $ \_ y -> y (x, k)
 
+{- |
+The central data type. @Tube@s stacked on top of the same base monad @m@ may be
+composed in series, so long as their type arguments agree. 
+-}
 type Tube a b = FreeT (TubeF a b)
-
-liftT :: (MonadTrans t, Monad m)
-      => FreeT f m a
-      -> t m (FreeF f a (FreeT f m a))
-liftT = lift . runFreeT
 
 await :: Monad m => Tube a b m a
 await = improveT $ liftF $ awaitF id
@@ -88,6 +100,17 @@ await = improveT $ liftF $ awaitF id
 yield :: Monad m => b -> Tube a b m ()
 yield x = improveT $ liftF $ yieldF x ()
 
+liftT :: (MonadTrans t, Monad m)
+      => FreeT f m a
+      -> t m (FreeF f a (FreeT f m a))
+liftT = lift . runFreeT
+
+{- |
+Compose a 'Tube' emitting values of type @b@ with a continuation producing a
+suitable successor.
+
+Used primarily to define '(><)'.
+-}
 (>-)
     :: Monad m
     => Tube a b m r
@@ -100,6 +123,9 @@ p >- f = liftT p >>= go where
 
 infixl 3 >-
 
+{- |
+Compose compatible tubes in series to produce a new 'Tube'.
+-}
 (><)
     :: Monad m
     => Tube a b m r
@@ -114,32 +140,47 @@ infixl 3 ><
 
 -- * Pumps
 
-data PumpF a b k = PumpF
-    { sendF :: (b -> k)
-    , recvF :: (a  , k)
+{- |
+Pumps are the dual of 'Tube's. Where a 'Tube' may either be 'await'ing or
+'yield'ing, a 'Pump' is always in a position to 'send' or 'recv' data. They are
+the machines which run 'Tube's, essentially.
+
+Pumps may be used to formulate infinite streams and folds.
+
+TODO: more examples!
+
+Note the type arguments are "backward" from the 'Tube' point of view: a
+@Pump b a w r@ may be sent values of type @a@ and you may receive @b@ values
+from it.
+-}
+type Pump b a = CofreeT (PumpF b a)
+
+{- |
+The basis for the 'Pump' comonad transformer. This says that a pump computation
+can send and receive data.
+-}
+data PumpF b a k = PumpF
+    { sendF :: (a -> k)
+    , recvF :: (b  , k)
     } deriving (Functor)
 
-type Pump a b = CofreeT (PumpF a b)
-
+-- | Send a 'Pump' a value, yielding a new 'Pump'.
 send :: Comonad w => b -> Pump a b w r -> Pump a b w r
 send x p = (sendF (unwrap p)) x
 
+-- | Receive a value from a 'Pump', along with a new 'Pump' for the future.
 recv :: Comonad w => Pump a b w r -> (a, Pump a b w r)
 recv p = recvF . unwrap $ p
 
-pump
+-- | Construct a 'Pump' based on an arbitrary comonad.
+pumpT
     :: Comonad w
     => w r
-    -> (w r -> (a, w r))
     -> (w r -> b -> w r)
+    -> (w r -> (a, w r))
     -> Pump a b w r
-pump x s r = coiterT cf x where
-    cf wa = PumpF (r wa) (s wa)
-
-meta :: (x -> a -> x) -> (x -> (b, x)) -> x -> x
-meta step done init = extract $ pump (Identity init)
-    (\(Identity xs) -> Identity <$> done xs)
-    (\(Identity xs) x -> Identity (step xs x))
+pumpT x s r = coiterT cf x where
+    cf wa = PumpF (s wa) (r wa)
 
 -- * Tubes and Pumps are adjoint!
 -- I considered using the @adjunctions@ package but I don't need all that
@@ -181,7 +222,7 @@ _streamM p s c = do
         Pure x -> return $ p a x
         Free gs -> adj (_streamM p) (unwrap s) gs
 
--- With specialized types
+-- | Process a 'Tube' stream with a given 'Pump', and merge their results.
 stream
     :: (Monad m, Comonad w)
     => (a -> b -> r)
@@ -190,6 +231,7 @@ stream
     -> m r
 stream = _stream
 
+-- | Process a 'Tube' stream with an effectful 'Pump', and merge their results.
 streamM
     :: (Monad m, Comonad w)
     => (a -> b -> r)
@@ -198,11 +240,21 @@ streamM
     -> m r
 streamM = _streamM
 
+-- | Run a self-contained 'Tube' computation.
 runTube
     :: Monad m
     => Tube () () m r
     -> m r
 runTube = stream (flip const)
-                 (pump (Identity ())
-                       (\i -> ((), i))
-                       const)
+                 (pumpT (Identity ())
+                        const
+                        (\i -> ((), i)))
+
+fix :: (a -> a) -> a
+fix f = let x = f x in x
+
+-- | Used only in situations where a dummy value is needed. Actively working to
+-- get rid of this.
+diverge :: a
+diverge = fix id
+

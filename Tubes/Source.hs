@@ -1,3 +1,12 @@
+{-
+Module          : Tubes.Source
+Description     : Defines the Source monad.
+Copyright       : (c) 2014-2016 Gatlin Johnson <gatlin@niltag.net>
+
+License         : GPL-3
+Maintainer      : gatlin@niltag.net
+Stability       : experimental
+-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 
@@ -25,7 +34,13 @@ import Tubes.Core
 import Tubes.Util
 
 {- |
-An exhaustible source of values parameterized over a base monad.
+An exhaustible source of values parameterized over a base monad. It never
+'await's.
+
+The @newtype@ formulation is to allow type-juggling. Because of how 'yield'
+works, any 'Tube' which 'yield's must have an ultimate return type @()@ so this
+is essentially noise. Instead, a 'Source' is a functor (and more) based on the
+type of values it emits downstream.
 -}
 newtype Source m a = Source {
     sample :: Tube () a m ()
@@ -74,13 +89,11 @@ instance (Monad m) => Monoid (Source m a) where
 Strict left-fold of a stream. Note that the actual return type of the source
 is not relevant, only the intermediate yield type.
 -}
-reduce :: Monad m
-       => (x -> a -> x) -- ^ step function
-       -> x             -- ^ initial value
-       -> (x -> b)      -- ^ final transformation
-       -> Source m a
-       -> m b
-reduce step begin done p0 = runFreeT (sample p0) >>= \p' -> loop p' begin where
-    loop (Pure _) x = return (done x)
-    loop (Free p) x = runTubeF p diverge (\(v, k) ->
-        runFreeT k >>= \k' -> loop k' $! step x v)
+reduce
+    :: Monad m
+    => (b -> a -> b)
+    -> b
+    -> Tube () a m ()
+    -> m b
+reduce step begin src = stream const f src where
+    f = lfold step (\x -> ((), x)) begin

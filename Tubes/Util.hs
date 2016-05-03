@@ -1,14 +1,14 @@
 {-
 Module          : Tubes.Util
 Description     : Optional stream processing utilities
-Copyright       : (c) 2014, 2015 Gatlin Johnson <gatlin@niltag.net>
+Copyright       : (c) 2014-2016 Gatlin Johnson <gatlin@niltag.net>
 
 License         : GPL-3
 Maintainer      : gatlin@niltag.net
 Stability       : experimental
 -}
 
-{-# LANGUAGE Rank2Types #-}
+{-# LANGUAGE RankNTypes #-}
 
 module Tubes.Util
 (
@@ -25,6 +25,7 @@ module Tubes.Util
 , Tubes.Util.unyield
 , Tubes.Util.mapM
 , Tubes.Util.sequence
+, Tubes.Util.lfold
 ) where
 
 import Prelude hiding (map, mapM)
@@ -35,9 +36,13 @@ import Control.Monad.IO.Class
 import Data.Foldable
 import Data.Monoid (Monoid, mappend, mempty)
 import System.IO
+import Data.Functor.Identity
 
 import Tubes.Core
 
+-- * Tube utilities
+
+-- | Loops over a 'Tube' and gives each 'yield'ed value to the continuation.
 for
     :: Monad m
     => Tube a b m r
@@ -127,4 +132,31 @@ mapM f = cat ~> (\a -> do
 -- | Evaluates and extracts a pure value from a monadic one.
 sequence :: Monad m => Tube (m a) a m r
 sequence = mapM id
+
+-- * Pump utilities
+
+{- |
+Constructs a resumable left fold. Example usage:
+
+    @
+        summer :: Pump () Int Identity Int
+        summer = lfold (+) (\x -> ((),x)) 0
+
+        main :: IO ()
+        main = do
+            result <- stream const (duplicate summer) $ each [1..10]
+            putStrLn . show . extract $ result -- "55"
+            result2 <- stream const (duplicate result) $ each [11..20]
+            putStrLn . show . extract $ result2 -- "210"
+    @
+
+-}
+lfold
+    :: (x -> a -> x)
+    -> (x -> (b, x))
+    -> x
+    -> Pump b a Identity x
+lfold step done init = pumpT (Identity init)
+    (\(Identity xs) x -> Identity (step xs x))
+    (\(Identity xs)   -> Identity <$> done xs)
 
