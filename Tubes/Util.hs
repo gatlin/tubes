@@ -36,8 +36,6 @@ import Data.Foldable
 import Data.Monoid (Monoid, mappend, mempty)
 import System.IO
 
-import Data.Void
-
 import Tubes.Core
 
 for
@@ -68,10 +66,10 @@ cat = forever $ do
     x <- await
     yield x
 
-each :: (Monad m, Foldable t) => t b -> Tube Void b m ()
+each :: (Monad m, Foldable t) => t b -> Tube () b m ()
 each as = Data.Foldable.mapM_ yield as
 
-every :: (Foldable t, Monad m) => t b -> Tube Void (Maybe b) m ()
+every :: (Foldable t, Monad m) => t b -> Tube () (Maybe b) m ()
 every xs = ((each xs) >< map Just) >> yield Nothing
 
 -- | Transforms all incoming values according to some function.
@@ -110,8 +108,8 @@ take n = do
 -- | Taps the next value from a source, maybe.
 unyield
     :: Monad m
-    => FreeT (TubeF Void b) m ()
-    -> m (Maybe (b, FreeT (TubeF Void b) m ()))
+    => FreeT (TubeF () b) m ()
+    -> m (Maybe (b, FreeT (TubeF () b) m ()))
 unyield tsk = do
     tsk' <- runFreeT tsk
     case tsk' of

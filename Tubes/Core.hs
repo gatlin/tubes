@@ -37,6 +37,7 @@ module Tubes.Core
 , stream
 , streamM
 , runTube
+, runFreeT
 )
 where
 
@@ -52,8 +53,6 @@ import Control.Applicative
 
 import Data.Foldable
 import Data.Functor.Identity
-
-import Data.Void
 
 fix :: (a -> a) -> a
 fix f = let x = f x in x
@@ -201,9 +200,9 @@ streamM = _streamM
 
 runTube
     :: Monad m
-    => Tube Void Void m r
+    => Tube () () m r
     -> m r
 runTube = stream (flip const)
                  (pump (Identity ())
-                       (\i -> (diverge, i))
+                       (\i -> ((), i))
                        const)
