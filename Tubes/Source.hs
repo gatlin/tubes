@@ -39,9 +39,7 @@ An exhaustible source of values parameterized over a base monad. It never
 'await's, it only 'yield's.
 
 'Source's are monad transformers in their own right, as they are possibly
-finite.
-
-'Source's may be synchronously merged as monoids:
+finite. They may also be synchronously merged as monoids:
 
     @
         import Data.Monoid

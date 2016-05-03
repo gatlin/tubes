@@ -28,8 +28,8 @@ description:
     @Tube a b m r@ consumes values of type 'a' and produces values of type
     'b'.
     .
-    @Tube@s are coroutines which can suspend computation to yield an
-    intermediate value or continue execution by requesting an upstream value.
+    Specialized @Tube@s exist which allow for stream branching, merging, and
+    other non-linear control. These are @Source@, @Sink@, and @Channel@.
     .
     Also provided are @Pump@s, the comonadic dual to @Tube@s. Examples are
     provided of how they can be used with @Tube@s but we have almost certainly

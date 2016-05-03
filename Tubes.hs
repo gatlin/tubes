@@ -3,7 +3,7 @@
 {- |
 Module          : Tubes
 Description     : All-encompassing module.
-Copyright       : (c) 2014, 2015 Gatlin Johnson <gatlin@niltag.net>
+Copyright       : (c) 2014, 2016 Gatlin Johnson <gatlin@niltag.net>
 
 License         : GPL-3
 Maintainer      : gatlin@niltag.net
@@ -11,9 +11,6 @@ Stability       : experimental
 
 Write effect-ful stream processing functions and compose them into a series of
 tubes.
-
-This exists primarily for my own education. It is updated often as I try
-things and is probably, at this moment, wrong.
 -}
 
 module Tubes
