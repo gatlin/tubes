@@ -10,7 +10,7 @@ Stability       : experimental
 module Tubes.Channel
 (
   Channel(..)
-, fromSink
+, tee
 , pass
 )
 where
@@ -40,6 +40,11 @@ You may also write Arrow computations with them:
     @
         {-# LANGUAGE Arrows #-}
 
+        import Tubes
+        import Control.Arrow
+        import Prelude hiding (map)
+
+        -- A simple channel which accumulates a total
         total :: (Num a, Monad m) => Channel m a a
         total = Channel $ loop 0 where
             loop acc = do
@@ -48,6 +53,7 @@ You may also write Arrow computations with them:
                 yield acc'
                 loop acc'
 
+        -- A running average using two totals in parallel
         avg :: (Fractional a, Monad m) => Channel m a a
         avg = proc value -> do
             t <- total -< value
@@ -70,7 +76,6 @@ This program would output
         5.666666666666667
         6.25
     @
-
 
 -}
 
@@ -132,7 +137,7 @@ Useful example:
             liftIO . putStrLn $ "Console out: " ++ line
 
         writeOut :: Channel IO String String
-        writeOut = fromSink $ writeToFile <> writeToConsole
+        writeOut = tee $ writeToFile <> writeToConsole
 
         main :: IO ()
         main = runTube $ each ["a","b","c"] >< forever (tune writeOut) >< pour display
@@ -151,11 +156,11 @@ This takes advantage of the divisible nature of 'Sink's to merge effectful
 computations and then continue the process.
 -}
 
-fromSink
+tee
     :: Monad m
     => Sink m a
     -> Channel m a a
-fromSink (Sink tube) = Channel $ do
+tee (Sink tube) = Channel $ do
     a <- await
     liftT $ yield a >< tube
     yield a

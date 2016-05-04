@@ -26,7 +26,7 @@ module Tubes
 , reduce
 , Sink(..)
 , Channel(..)
-, fromSink
+, tee
 -- * Pumps
 -- $pumpintro
 , Pump(..)
@@ -121,7 +121,12 @@ Code is worth a thousand words. This program ...
 
         -- And make outputs re-forward their input data
         writeOut' :: MonadIO m => Channel m String String
-        writeOut' = fromSink writeOut
+        writeOut' = tee writeOut
+
+        main :: IO ()
+        main = runTube $ sample srcAB
+                      >< tune writeOut'
+                      >< pour display
     @
 
 ... gives this output:
