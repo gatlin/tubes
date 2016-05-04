@@ -11,7 +11,6 @@ module Tubes.Channel
 (
   Channel(..)
 , tee
-, pass
 )
 where
 
@@ -30,52 +29,51 @@ import Tubes.Util
 import Tubes.Sink
 
 {- |
-A @Channel m a b@ is a one-way stream processor, transforming values of type
-@a@ into values of type @b@ in some base monad @m@.
+A @Channel m a b@ is a stream processor which converts values of type @a@ into
+values of type @b@, while also performing side-effects in some monad @m@.
 
-Channels may be thought of as 'Sink's followed immediately by 'Source's.
+If a @Channel@ 'yield's exactly once after each time it 'await's then it may be
+safely treated as an @Arrow@. For example:
 
-You may also write Arrow computations with them:
+@
+    {-# LANGUAGE Arrows #-}
 
-    @
-        {-# LANGUAGE Arrows #-}
+    import Tubes
+    import Control.Arrow
+    import Prelude hiding (map)
 
-        import Tubes
-        import Control.Arrow
-        import Prelude hiding (map)
+    -- A simple channel which accumulates a total
+    total :: (Num a, Monad m) => Channel m a a
+    total = Channel $ loop 0 where
+        loop acc = do
+            n <- await
+            let acc' = n + acc
+            yield acc'
+            loop acc'
 
-        -- A simple channel which accumulates a total
-        total :: (Num a, Monad m) => Channel m a a
-        total = Channel $ loop 0 where
-            loop acc = do
-                n <- await
-                let acc' = n + acc
-                yield acc'
-                loop acc'
+    -- A running average using two totals in parallel
+    avg :: (Fractional a, Monad m) => Channel m a a
+    avg = proc value -> do
+        t <- total -< value
+        n <- total -< 1
+        returnA -< t / n
 
-        -- A running average using two totals in parallel
-        avg :: (Fractional a, Monad m) => Channel m a a
-        avg = proc value -> do
-            t <- total -< value
-            n <- total -< 1
-            returnA -< t / n
+    main :: IO ()
+    main = runTube $ each [0,10,7,8]
+                  >< tune avg
+                  >< map show
+                  >< pour display
 
-        main :: IO ()
-        main = runTube $ each [0,10,7,8]
-                      >< tune avg
-                      >< map show
-                      >< pour display
-
-    @
+@
 
 This program would output
 
-    @
-        0.0
-        5.0
-        5.666666666666667
-        6.25
-    @
+@
+    0.0
+    5.0
+    5.666666666666667
+    6.25
+@
 
 -}
 
@@ -114,50 +112,39 @@ instance (Monad m) => Arrow (Channel m) where
                     loop k
                 Nothing -> halt
 
--- | This function assumes that a 'Tube' will alternate 'await'ing and
--- 'yield'ing in succession.
-pass :: Monad m => a -> Tube a b m () -> m (Maybe (b, Tube a b m ()))
-pass arg tb = do
-    mtb <- runFreeT tb
-    case mtb of
-        Free tb' -> do
-            let k = runTubeF tb' (\ak -> ak arg) diverge
-            unyield k
-        Pure _ -> return Nothing
-
 {- |
 Convert a 'Sink m a' into a 'Channel m a a', re-forwarding values downstream.
 
 Useful example:
 
-    @
-        import Data.Semigroup
+@
+    import Data.Semigroup
 
-        writeToFile :: Sink IO String
-        writeToFile = Sink $ do
-            line <- await
-            liftIO . putStrLn $ "Totally writing this to a file: " ++ line
+    writeToFile :: Sink IO String
+    writeToFile = Sink $ do
+        line <- await
+        liftIO . putStrLn $ "Totally writing this to a file: " ++ line
 
-        writeToConsole :: Sink IO String
-        writeToConsole = Sink $ do
-            line <- await
-            liftIO . putStrLn $ "Console out: " ++ line
+    writeToConsole :: Sink IO String
+    writeToConsole = Sink $ do
+        line <- await
+        liftIO . putStrLn $ "Console out: " ++ line
 
-        writeOut :: Channel IO String String
-        writeOut = tee $ writeToFile <> writeToConsole
+    writeOut :: Channel IO String String
+    writeOut = tee $ writeToFile <> writeToConsole
 
-        main :: IO ()
-        main = runTube $ each ["a","b","c"] >< forever (tune writeOut) >< pour display
-        --  Totally writing this to a file: a
-        --  Console out: a
-        --  a
-        --  Totally writing this to a file: b
-        --  Console out: b
-        --  b
-        --  Totally writing this to a file: c
-        --  Console out: c
-        --  c
-    @
+    main :: IO ()
+    main = runTube $ each ["a","b","c"] \>\< forever (tune writeOut) \>\< pour display
+    --  Totally writing this to a file: a
+    --  Console out: a
+    --  a
+    --  Totally writing this to a file: b
+    --  Console out: b
+    --  b
+    --  Totally writing this to a file: c
+    --  Console out: c
+    --  c
+@
 
 This takes advantage of the divisible nature of 'Sink's to merge effectful
 computations and then continue the process.

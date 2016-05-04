@@ -16,27 +16,29 @@ tubes.
 
 module Tubes
 (
+-- * Tube
 -- $tubeintro
--- * Tubes
   Tube(..)
-, runTube
 , yield
 , await
+, (><)
+, runTube
 , halt
+-- * Sources
 , Source(..)
 , reduce
+-- * Sinks
 , Sink(..)
+-- * Channels
 , Channel(..)
 , tee
--- * Pumps
--- $pumpintro
+-- * Pump
 , Pump(..)
 , send
 , recv
 , pumpT
 , lfold
 -- * Utilities
--- $utilintro
 , stream
 , streamM
 , Tubes.Util.cat
@@ -50,6 +52,7 @@ module Tubes
 , Tubes.Util.takeWhile
 , Tubes.Util.filter
 , Tubes.Util.unyield
+, Tubes.Util.pass
 , Tubes.Util.mapM
 , Tubes.Util.sequence
 , Tubes.Util.stop
@@ -59,6 +62,8 @@ module Tubes
 -- * Re-exports
 , liftT
 , runFreeT
+-- * Example
+-- $tubeexample
 )
 where
 
@@ -72,97 +77,81 @@ import System.IO
 import Control.Monad.IO.Class
 import Control.Monad (unless, forever)
 
-import Prelude hiding (map, take, mapM)
-import qualified Prelude as P
-import Data.Semigroup
-import Control.Applicative
-import Data.Functor.Identity
-import Control.Arrow
-import Control.Monad.State hiding (mapM)
-import Data.Functor.Contravariant.Divisible
-
-import Control.Monad.Trans.Free
-
 {- $tubeintro
+-}
+
+{- $tubeexample
 
 Code is worth a thousand words. This program ...
 
-    @
-        import Prelude hiding (map)
-        import qualified Prelude as P
+@
+    import Prelude hiding (map)
+    import qualified Prelude as P
 
-        import Data.Semigroup
-        import Control.Monad (forevGer)
+    import Data.Semigroup
+    import Control.Monad (forevGer)
 
-        import Tubes
+    import Tubes
 
-        srcA :: MonadIO m => Source m String
-        srcA = Source $ each ["line A1", "line A2", "line A3"]
+    srcA :: MonadIO m => Source m String
+    srcA = Source $ each ["line A1", "line A2", "line A3"]
 
-        srcB :: MonadIO m => Source m String
-        srcB = Source $ each ["line B1", "line B2", "line B3", "line B4"]
+    srcB :: MonadIO m => Source m String
+    srcB = Source $ each ["line B1", "line B2", "line B3", "line B4"]
 
-        -- Synchronously merge input
-        srcAB :: MonadIO m => Source m String
-        srcAB = srcA <> srcB
+    -- Synchronously merge input
+    srcAB :: MonadIO m => Source m String
+    srcAB = srcA <> srcB
 
-        writeToFile :: MonadIO m => Sink m String
-        writeToFile = Sink $ do
-            line <- await
-            liftIO . putStrLn $ "Totally writing this to a file: " ++ line
+    writeToFile :: MonadIO m => Sink m String
+    writeToFile = Sink $ do
+        line <- await
+        liftIO . putStrLn $ "Totally writing this to a file: " ++ line
 
-        writeToConsole :: MonadIO m => Sink m String
-        writeToConsole = Sink $ do
-            line <- await
-            liftIO . putStrLn $ "Console out: " ++ line
+    writeToConsole :: MonadIO m => Sink m String
+    writeToConsole = Sink $ do
+        line <- await
+        liftIO . putStrLn $ "Console out: " ++ line
 
-        -- Merge outputs together
-        writeOut :: MonadIO m => Sink m String
-        writeOut = writeToFile <> writeToConsole
+    -- Merge outputs together
+    writeOut :: MonadIO m => Sink m String
+    writeOut = writeToFile <> writeToConsole
 
-        -- And make outputs re-forward their input data
-        writeOut' :: MonadIO m => Channel m String String
-        writeOut' = tee writeOut
+    -- And make outputs re-forward their input data
+    writeOut' :: MonadIO m => Channel m String String
+    writeOut' = tee writeOut
 
-        main :: IO ()
-        main = runTube $ sample srcAB
-                      >< tune writeOut'
-                      >< pour display
-    @
+    main :: IO ()
+    main = runTube $ sample srcAB
+                  >< tune writeOut'
+                  >< pour display
+@
 
 ... gives this output:
 
-    @
-        Totally writing this to a file: line A1
-        Console out: line A1
-        line A1
-        Totally writing this to a file: line B1
-        Console out: line B1
-        line B1
-        Totally writing this to a file: line A2
-        Console out: line A2
-        line A2
-        Totally writing this to a file: line B2
-        Console out: line B2
-        line B2
-        Totally writing this to a file: line A3
-        Console out: line A3
-        line A3
-        Totally writing this to a file: line B3
-        Console out: line B3
-        line B3
-        Totally writing this to a file: line B4
-        Console out: line B4
-        line B4
-    @
--}
-
-{- $utilintro
-TODO: Write this
--}
-
-{- $pumpintro
-TODO: Write this
+@
+    Totally writing this to a file: line A1
+    Console out: line A1
+    line A1
+    Totally writing this to a file: line B1
+    Console out: line B1
+    line B1
+    Totally writing this to a file: line A2
+    Console out: line A2
+    line A2
+    Totally writing this to a file: line B2
+    Console out: line B2
+    line B2
+    Totally writing this to a file: line A3
+    Console out: line A3
+    line A3
+    Totally writing this to a file: line B3
+    Console out: line B3
+    line B3
+    Totally writing this to a file: line B4
+    Console out: line B4
+    line B4
+@
 -}
 
 -- | Source of 'String's from stdin. This is mostly for debugging / ghci example purposes.

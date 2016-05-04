@@ -41,28 +41,28 @@ An exhaustible source of values parameterized over a base monad. It never
 'Source's are monad transformers in their own right, as they are possibly
 finite. They may also be synchronously merged as monoids:
 
-    @
-        import Data.Monoid
+@
+    import Data.Monoid
 
-        src1 :: Source IO String
-        src1 = Source $ each ["line A1", "line A2", "line A3"]
+    src1 :: Source IO String
+    src1 = Source $ each ["line A1", "line A2", "line A3"]
 
-        src2 :: Source IO String
-        src2 = Source $ each ["line B1", "line B2", "line B3", "line B4"]
+    src2 :: Source IO String
+    src2 = Source $ each ["line B1", "line B2", "line B3", "line B4"]
 
-        src3 :: Source IO String
-        src3 = src1 <> src2
+    src3 :: Source IO String
+    src3 = src1 <> src2
 
-        main :: IO ()
-        main = runTube $ sample (src1 <> src2) >< pour display
-        -- line A1
-        -- line B1
-        -- line A2
-        -- line B2
-        -- line A3
-        -- line B3
-        -- line B4
-    @
+    main :: IO ()
+    main = runTube $ sample (src1 <> src2) >< pour display
+    -- line A1
+    -- line B1
+    -- line A2
+    -- line B2
+    -- line A3
+    -- line B3
+    -- line B4
+@
 
 If one source runs out, the other will continue until completion.
 -}

@@ -132,6 +132,10 @@ infixl 3 >-
 
 {- |
 Compose compatible tubes in series to produce a new 'Tube'.
+
+@
+    each [1..10] >< map (*2) >< pour display
+@
 -}
 (><)
     :: Monad m

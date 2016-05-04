@@ -37,58 +37,58 @@ before it is consumed.
 
 Example:
 
-    @
-        import Data.Functor.Contravariant
+@
+    import Data.Functor.Contravariant
 
-        add5 :: Sink IO Int
-        add5 = Sink $ loop 0 5 where
-            loop acc 0 = do
-                liftIO $ putStrLn $ "Sum of five numbers: " ++ (show acc)
-                halt
-            loop acc count = do
-                n <- await
-                loop (acc + n) (count - 1)
+    add5 :: Sink IO Int
+    add5 = Sink $ loop 0 5 where
+        loop acc 0 = do
+            liftIO $ putStrLn $ "Sum of five numbers: " ++ (show acc)
+            halt
+        loop acc count = do
+            n <- await
+            loop (acc + n) (count - 1)
 
-        add5 :: Sink IO Int
-        add5 = (*2) >$< add5
+    add5 :: Sink IO Int
+    add5 = (*2) >$< add5
 
-        main :: IO ()
-        main = do
-            runTube $ each [1..10] >< pour add5
-            -- "Sum of five numbers: 15"
+    main :: IO ()
+    main = do
+        runTube $ each [1..10] >< pour add5
+        -- "Sum of five numbers: 15"
 
-            runTube $ each [1..10] >< pour add5Times2
-            -- "Sum of five numbers: 30"
-    @
+        runTube $ each [1..10] >< pour add5Times2
+        -- "Sum of five numbers: 30"
+@
 
 'Sink's may also be merged together, as they form a semigroup:
 
-    @
-        import Data.Semigroup
+@
+    import Data.Semigroup
 
-        writeToFile :: Sink IO String
-        writeToFile = Sink $ do
-            line <- await
-            liftIO . putStrLn $ "Totally writing this to a file: " ++ line
+    writeToFile :: Sink IO String
+    writeToFile = Sink $ do
+        line <- await
+        liftIO . putStrLn $ "Totally writing this to a file: " ++ line
 
-        writeToConsole :: Sink IO String
-        writeToConsole = Sink $ do
-            line <- await
-            liftIO . putStrLn $ "Console out: " ++ line
+    writeToConsole :: Sink IO String
+    writeToConsole = Sink $ do
+        line <- await
+        liftIO . putStrLn $ "Console out: " ++ line
 
-        writeOut :: Sink IO String
-        writeOut = writeToFile <> writeToConsole
+    writeOut :: Sink IO String
+    writeOut = writeToFile <> writeToConsole
 
-        main :: IO ()
-        main = do
-            runTube $ each [1..3] >< map show >< forever (pour writeOut)
-            -- Totally writing this to a file: 1
-            -- Console out: 1
-            -- Totally writing this to a file: 2
-            -- Console out: 2
-            -- Totally writing this to a file: 3
-            -- Console out: 3
-    @
+    main :: IO ()
+    main = do
+        runTube $ each [1..3] \>\< map show \>\< forever (pour writeOut)
+        -- Totally writing this to a file: 1
+        -- Console out: 1
+        -- Totally writing this to a file: 2
+        -- Console out: 2
+        -- Totally writing this to a file: 3
+        -- Console out: 3
+@
 
 -}
 newtype Sink m a = Sink {

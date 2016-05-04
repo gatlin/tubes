@@ -24,6 +24,7 @@ module Tubes.Util
 , Tubes.Util.takeWhile
 , Tubes.Util.filter
 , Tubes.Util.unyield
+, Tubes.Util.pass
 , Tubes.Util.mapM
 , Tubes.Util.sequence
 , Tubes.Util.lfold
@@ -127,6 +128,16 @@ unyield tsk = do
         Free tsk''  -> do
             let res = runTubeF tsk'' diverge (\(v, k) -> Just (v, k))
             return res
+
+-- | Similar to 'unyield' but it first sends a value through the tube.
+pass :: Monad m => a -> Tube a b m () -> m (Maybe (b, Tube a b m ()))
+pass arg tb = do
+    mtb <- runFreeT tb
+    case mtb of
+        Free tb' -> do
+            let k = runTubeF tb' (\ak -> ak arg) diverge
+            unyield k
+        Pure _ -> return Nothing
 
 -- | Similar to 'map' except it maps a monadic function instead of a pure one.
 mapM :: Monad m => (a -> m b) -> Tube a b m r
