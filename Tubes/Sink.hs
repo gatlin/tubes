@@ -49,15 +49,15 @@ Example:
             n <- await
             loop (acc + n) (count - 1)
 
-    add5 :: Sink IO Int
-    add5 = (*2) >$< add5
+    times2Add5:: Sink IO Int
+    times2Add5 = (*2) >$< add5
 
     main :: IO ()
     main = do
         runTube $ each [1..10] >< pour add5
         -- "Sum of five numbers: 15"
 
-        runTube $ each [1..10] >< pour add5Times2
+        runTube $ each [1..10] >< pour times2Add5
         -- "Sum of five numbers: 30"
 @
 

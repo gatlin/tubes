@@ -17,7 +17,6 @@ module Tubes.Util
 , Tubes.Util.for
 , Tubes.Util.each
 , Tubes.Util.every
-, (~>)
 , Tubes.Util.map
 , Tubes.Util.drop
 , Tubes.Util.take
@@ -57,16 +56,6 @@ for src body = liftT src >>= go where
         (\(v,k) -> do
             body v
             liftT k >>= go)
-
-(~>)
-    :: Monad m
-    => Tube a b m r
-    -> (b -> Tube a c m s)
-    -> Tube a c m r
-(~>) = for
-{-# INLINE (~>) #-}
-infixl 3 ~>
-
 -- | A default tube to end a series when no further processing is required.
 stop :: Monad m => Tube a () m r
 stop = map (const ())
@@ -85,7 +74,7 @@ every xs = ((each xs) >< map Just) >> yield Nothing
 
 -- | Transforms all incoming values according to some function.
 map :: (Monad m) => (a -> b) -> Tube a b m r
-map f = cat ~> (\x -> yield (f x))
+map f = for cat (\x -> yield (f x))
 
 -- | Refuses to yield the first @n@ values it receives.
 drop :: Monad m => Int -> Tube a a m r
@@ -95,7 +84,7 @@ drop n = do
 
 -- | Yields only values satisfying some predicate.
 filter :: Monad m => (a -> Bool) -> Tube a a m r
-filter pred = cat ~> (\x -> when (pred x) (yield x))
+filter pred = for cat (\x -> when (pred x) (yield x))
 
 -- | Terminates the stream upon receiving a value violating the predicate
 takeWhile :: Monad m => (a -> Bool) -> Tube a a m ()
@@ -141,7 +130,7 @@ pass arg tb = do
 
 -- | Similar to 'map' except it maps a monadic function instead of a pure one.
 mapM :: Monad m => (a -> m b) -> Tube a b m r
-mapM f = cat ~> (\a -> do
+mapM f = for cat (\a -> do
     b <- lift $ f a
     yield b)
 
@@ -154,17 +143,17 @@ sequence = mapM id
 {- |
 Constructs a resumable left fold. Example usage:
 
-    @
-        summer :: Pump () Int Identity Int
-        summer = lfold (+) (\x -> ((),x)) 0
+@
+    summer :: Pump () Int Identity Int
+    summer = lfold (+) (\x -> ((),x)) 0
 
-        main :: IO ()
-        main = do
-            result <- stream const (duplicate summer) $ each [1..10]
-            putStrLn . show . extract $ result -- "55"
-            result2 <- stream const (duplicate result) $ each [11..20]
-            putStrLn . show . extract $ result2 -- "210"
-    @
+    main :: IO ()
+    main = do
+        result <- stream const (duplicate summer) $ each [1..10]
+        putStrLn . show . extract $ result -- "55"
+        result2 <- stream const (duplicate result) $ each [11..20]
+        putStrLn . show . extract $ result2 -- "210"
+@
 
 -}
 lfold

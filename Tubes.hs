@@ -45,7 +45,6 @@ module Tubes
 , Tubes.Util.for
 , Tubes.Util.each
 , Tubes.Util.every
-, (~>)
 , Tubes.Util.map
 , Tubes.Util.drop
 , Tubes.Util.take

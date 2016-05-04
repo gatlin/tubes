@@ -97,11 +97,11 @@ library
   build-depends:       base >=4.8 && < 5,
                        transformers >=0.3,
                        free >=4.12,
-                       mtl,
-                       comonad,
-                       contravariant,
-                       profunctors,
-                       semigroups
+                       mtl >= 2.2.1,
+                       comonad >= 5,
+                       contravariant >= 1.4,
+                       profunctors >= 5.2,
+                       semigroups >= 0.18.1
   
   -- Directories containing source files.
   -- hs-source-dirs:      

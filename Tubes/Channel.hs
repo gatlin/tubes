@@ -36,7 +36,7 @@ If a @Channel@ 'yield's exactly once after each time it 'await's then it may be
 safely treated as an @Arrow@. For example:
 
 @
-    {-# LANGUAGE Arrows #-}
+    {&#45;\# LANGUAGE Arrows \#&#45;}
 
     import Tubes
     import Control.Arrow
@@ -74,6 +74,8 @@ This program would output
     5.666666666666667
     6.25
 @
+
+This has interesting potential in FRP applications.
 
 -}
 
