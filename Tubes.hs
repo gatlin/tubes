@@ -1,4 +1,5 @@
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE Arrows #-}
 
 {- |
 Module          : Tubes
@@ -180,4 +181,3 @@ display :: MonadIO m => Sink m String
 display = Sink $ forever $ do
     it <- await
     liftIO . putStrLn $ it
-

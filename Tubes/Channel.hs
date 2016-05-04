@@ -97,26 +97,33 @@ instance (Monad m) => Arrow (Channel m) where
     first ch = Channel $ loop (tune ch) where
         loop tb = do
             ~(b,d) <- await
-            (c,k) <- lift $ pass b tb
-            yield (c, d)
-            loop k
+            mr <- lift $ pass b tb
+            case mr of
+                Just (c,k) -> do
+                    yield (c, d)
+                    loop k
+                Nothing -> halt
 
     second ch = Channel $ loop (tune ch) where
         loop tb = do
             ~(d,b) <- await
-            (c,k) <- lift $ pass b tb
-            yield (d, c)
-            loop k
-
+            mr <- lift $ pass b tb
+            case mr of
+                Just (c,k) -> do
+                    yield (d, c)
+                    loop k
+                Nothing -> halt
 
 -- | This function assumes that a 'Tube' will alternate 'await'ing and
 -- 'yield'ing in succession.
-pass :: Monad m => a -> Tube a b m () -> m (b, Tube a b m ())
+pass :: Monad m => a -> Tube a b m () -> m (Maybe (b, Tube a b m ()))
 pass arg tb = do
-    Free tb' <- runFreeT tb
-    let k = runTubeF tb' (\ak -> ak arg) diverge
-    Just r <- unyield k
-    return r
+    mtb <- runFreeT tb
+    case mtb of
+        Free tb' -> do
+            let k = runTubeF tb' (\ak -> ak arg) diverge
+            unyield k
+        Pure _ -> return Nothing
 
 {- |
 Convert a 'Sink m a' into a 'Channel m a a', re-forwarding values downstream.
