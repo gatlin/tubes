@@ -12,7 +12,8 @@ Stability       : experimental
 
 module Tubes.Util
 (
-  Tubes.Util.cat
+  Tubes.Util.stop
+, Tubes.Util.cat
 , Tubes.Util.for
 , Tubes.Util.each
 , Tubes.Util.every
@@ -65,6 +66,10 @@ for src body = liftT src >>= go where
 {-# INLINE (~>) #-}
 infixl 3 ~>
 
+-- | A default tube to end a series when no further processing is required.
+stop :: Monad m => Tube a () m r
+stop = map (const ())
+
 -- | Continuously relays any values it receives. Iteratee identity.
 cat :: Monad m => Tube a a m r
 cat = forever $ do
@@ -113,8 +118,8 @@ take n = do
 -- | Taps the next value from a source, maybe.
 unyield
     :: Monad m
-    => FreeT (TubeF () b) m ()
-    -> m (Maybe (b, FreeT (TubeF () b) m ()))
+    => FreeT (TubeF x b) m ()
+    -> m (Maybe (b, FreeT (TubeF x b) m ()))
 unyield tsk = do
     tsk' <- runFreeT tsk
     case tsk' of

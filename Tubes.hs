@@ -51,6 +51,7 @@ module Tubes
 , Tubes.Util.unyield
 , Tubes.Util.mapM
 , Tubes.Util.sequence
+, Tubes.Util.stop
 -- * Miscellaneous
 , prompt
 , display
@@ -70,7 +71,16 @@ import System.IO
 import Control.Monad.IO.Class
 import Control.Monad (unless, forever)
 
+import Prelude hiding (map, take, mapM)
+import qualified Prelude as P
 import Data.Semigroup
+import Control.Applicative
+import Data.Functor.Identity
+import Control.Arrow
+import Control.Monad.State hiding (mapM)
+import Data.Functor.Contravariant.Divisible
+
+import Control.Monad.Trans.Free
 
 {- $tubeintro
 
@@ -81,42 +91,37 @@ Code is worth a thousand words. This program ...
         import qualified Prelude as P
 
         import Data.Semigroup
-        import Control.Monad (forever)
+        import Control.Monad (forevGer)
 
         import Tubes
 
-        srcA :: Source IO String
+        srcA :: MonadIO m => Source m String
         srcA = Source $ each ["line A1", "line A2", "line A3"]
 
-        srcB :: Source IO String
+        srcB :: MonadIO m => Source m String
         srcB = Source $ each ["line B1", "line B2", "line B3", "line B4"]
 
         -- Synchronously merge input
-        srcAB :: Source IO String
+        srcAB :: MonadIO m => Source m String
         srcAB = srcA <> srcB
 
-        writeToFile :: Sink IO String
+        writeToFile :: MonadIO m => Sink m String
         writeToFile = Sink $ do
             line <- await
             liftIO . putStrLn $ "Totally writing this to a file: " ++ line
 
-        writeToConsole :: Sink IO String
+        writeToConsole :: MonadIO m => Sink m String
         writeToConsole = Sink $ do
             line <- await
             liftIO . putStrLn $ "Console out: " ++ line
 
         -- Merge outputs together
-        writeOut :: Sink IO String
+        writeOut :: MonadIO m => Sink m String
         writeOut = writeToFile <> writeToConsole
 
         -- And make outputs re-forward their input data
-        writeOut' :: Channel IO String String
+        writeOut' :: MonadIO m => Channel m String String
         writeOut' = fromSink writeOut
-
-        main :: IO ()
-        main = runTube $ sample srcAB
-                      >< forever (tune writeOut')
-                      >< pour display -- builtin
     @
 
 ... gives this output:
@@ -170,3 +175,4 @@ display :: MonadIO m => Sink m String
 display = Sink $ forever $ do
     it <- await
     liftIO . putStrLn $ it
+

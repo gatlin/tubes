@@ -10,9 +10,8 @@ Stability       : experimental
 module Tubes.Channel
 (
   Channel(..)
-, arg
-, pass
 , fromSink
+, pass
 )
 where
 
@@ -23,6 +22,8 @@ import Data.Functor.Identity
 import Control.Monad.Trans.Class
 import Control.Category
 import Control.Arrow
+import Control.Monad (forever)
+import Control.Monad.Trans.Free
 
 import Tubes.Core
 import Tubes.Util
@@ -33,6 +34,44 @@ A @Channel m a b@ is a one-way stream processor, transforming values of type
 @a@ into values of type @b@ in some base monad @m@.
 
 Channels may be thought of as 'Sink's followed immediately by 'Source's.
+
+You may also write Arrow computations with them:
+
+    @
+        {-# LANGUAGE Arrows #-}
+
+        total :: (Num a, Monad m) => Channel m a a
+        total = Channel $ loop 0 where
+            loop acc = do
+                n <- await
+                let acc' = n + acc
+                yield acc'
+                loop acc'
+
+        avg :: (Fractional a, Monad m) => Channel m a a
+        avg = proc value -> do
+            t <- total -< value
+            n <- total -< 1
+            returnA -< t / n
+
+        main :: IO ()
+        main = runTube $ each [0,10,7,8]
+                      >< tune avg
+                      >< map show
+                      >< pour display
+
+    @
+
+This program would output
+
+    @
+        0.0
+        5.0
+        5.666666666666667
+        6.25
+    @
+
+
 -}
 
 newtype Channel m a b = Channel {
@@ -45,34 +84,34 @@ instance Monad m => Profunctor (Channel m) where
 
 instance Monad m => Category (Channel m) where
     id  = Channel cat
-    c_bc . c_ab = Channel $ tune c_ab >< tune c_bc
+    c_bc . c_ab = Channel $ forever (tune c_ab) >< forever (tune c_bc)
 
--- this and 'pass' are almost certainly wrong
-arg :: a -> Pump a b Identity (Maybe b)
-arg x = pumpT (Identity Nothing)
-            (\_ x -> Identity (Just x))
-            (\i@(Identity _) -> (x, i))
-
-pass
-    :: Monad m
-    => Tube a b m ()
-    -> a
-    -> m b
-pass tube x = (\(Just x) -> x) <$> stream const (arg x) tube
-
--- | This implementation almost certainly contains bugs. Here for exploration.
-instance Monad m => Arrow (Channel m) where
+instance (Monad m) => Arrow (Channel m) where
     arr f = Channel $ map f
 
-    first (Channel tube) = Channel $ do
-        ~(b,d) <- await
-        c <- lift $ pass tube b
-        yield (c, d)
+    first ch = Channel $ loop (tune ch) where
+        loop tb = do
+            ~(b,d) <- await
+            (c,k) <- lift $ pass b tb
+            yield (c, d)
+            loop k
 
-    second (Channel tube) = Channel $ do
-        ~(d,b) <- await
-        c <- lift $ pass tube b
-        yield (d, c)
+    second ch = Channel $ loop (tune ch) where
+        loop tb = do
+            ~(d,b) <- await
+            (c,k) <- lift $ pass b tb
+            yield (d, c)
+            loop k
+
+
+-- | This function assumes that a 'Tube' will alternate 'await'ing and
+-- 'yield'ing in succession.
+pass :: Monad m => a -> Tube a b m () -> m (b, Tube a b m ())
+pass arg tb = do
+    Free tb' <- runFreeT tb
+    let k = runTubeF tb' (\ak -> ak arg) diverge
+    Just r <- unyield k
+    return r
 
 {- |
 Convert a 'Sink m a' into a 'Channel m a a', re-forwarding values downstream.

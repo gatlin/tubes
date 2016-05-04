@@ -89,7 +89,7 @@ instance (Monad m) => Monad (Source m) where
 instance Monad m => Alternative (Source m) where
     empty = Source $ return ()
 
-    -- This is hideous but amazing
+    -- This is hideous
     s1 <|> s2 = Source $ loop (sample s1) (sample s2) where
         loop s1 s2 = do
             mR1 <- lift $ unyield s1
