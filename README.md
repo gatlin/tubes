@@ -1,7 +1,8 @@
 Tubes
 ==========
 
-Stream processing with a series of tubes.
+Write stream processing computations with monadic side effects and compose them
+in a series of tubes.
 
 This is similar to the [pipes][pipes] and [conduit][conduit] libraries in
 purpose but its implementation is very different. A tube is either a
