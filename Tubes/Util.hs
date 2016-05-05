@@ -108,8 +108,8 @@ take n = do
 -- | Taps the next value from a source, maybe.
 unyield
     :: Monad m
-    => FreeT (TubeF x b) m ()
-    -> m (Maybe (b, FreeT (TubeF x b) m ()))
+    => Tube x b m ()
+    -> m (Maybe (b, Tube x b m ()))
 unyield tsk = do
     tsk' <- runFreeT tsk
     case tsk' of
