@@ -60,7 +60,7 @@ for src body = liftT src >>= go where
 stop :: Monad m => Tube a () m r
 stop = map (const ())
 
--- | Continuously relays any values it receives. Iteratee identity.
+-- | Continuously relays any values it receives.
 cat :: Monad m => Tube a a m r
 cat = forever $ do
     x <- await
