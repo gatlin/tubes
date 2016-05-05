@@ -18,8 +18,8 @@ cabal-version:       >=1.10
 
 -- A short (one-line) description of the package.
 synopsis:
-    Write stream processing combinators in any monad and then compose them in a
-    series of tubes.
+    Write stream processing computations with side effects in a series of
+    tubes.
 
 -- A longer description of the package.
 description:
@@ -83,7 +83,12 @@ source-repository head
 
 library
   -- Modules exported by the library.
-  exposed-modules:     Tubes
+  exposed-modules:     Tubes,
+                       Tubes.Core,
+                       Tubes.Util,
+                       Tubes.Source,
+                       Tubes.Sink,
+                       Tubes.Channel
   
   -- Modules included in this library but not exported.
   -- other-modules:       

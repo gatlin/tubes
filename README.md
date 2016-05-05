@@ -7,9 +7,9 @@ in a series of tubes.
 This is similar to the [pipes][pipes] and [conduit][conduit] libraries in
 purpose but its implementation is very different. A tube is either a
 
-    - `Source m a`, yielding values of type `a` ;
-    - `Sink m a`, awaiting values of type `a` ; or
-    - `Channel m a b`, transforming `a` values into `b` values.
+- `Source m a`, yielding values of type `a` ;
+- `Sink m a`, awaiting values of type `a` ; or
+- `Channel m a b`, transforming `a` values into `b` values.
 
 These are all aliases for the same fundamental type: `Tube a b m ()`. However
 the different variations are all instances of different classes which endow
