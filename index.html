@@ -1,12 +1,20 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8" /><title>tubes-0.2.2.1: Effectful, iteratee-inspired stream processing based on a
-free monad.</title><link href="ocean.css" rel="stylesheet" type="text/css" title="Ocean" /><script src="haddock-util.js" type="text/javascript"></script><script type="text/javascript">//<![CDATA[
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8" /><title>tubes-2.0.0.0: Write stream processing combinators in any monad and then compose them in a
+series of tubes.</title><link href="ocean.css" rel="stylesheet" type="text/css" title="Ocean" /><script src="haddock-util.js" type="text/javascript"></script><script type="text/javascript">//<![CDATA[
 window.onload = function () {pageLoad();};
 //]]>
-</script></head><body><div id="package-header"><ul class="links" id="page-menu"><li><a href="index.html">Contents</a></li><li><a href="doc-index.html">Index</a></li></ul><p class="caption">tubes-0.2.2.1: Effectful, iteratee-inspired stream processing based on a
-free monad.</p></div><div id="content"><div id="description"><h1>tubes-0.2.2.1: Effectful, iteratee-inspired stream processing based on a
-free monad.</h1><div class="doc"><p>This package provides the <code>Tube</code> monad transformer, allowing any monad
+</script></head><body><div id="package-header"><ul class="links" id="page-menu"><li><a href="index.html">Contents</a></li><li><a href="doc-index.html">Index</a></li></ul><p class="caption">tubes-2.0.0.0: Write stream processing combinators in any monad and then compose them in a
+series of tubes.</p></div><div id="content"><div id="description"><h1>tubes-2.0.0.0: Write stream processing combinators in any monad and then compose them in a
+series of tubes.</h1><div class="doc"><p>This package provides the <code>Tube</code> monad transformer, allowing any monad
 computation to become a stream processing pipeline. A computation of type
 <code>Tube a b m r</code> consumes values of type <code>a</code> and produces values of type
-<code>b</code>.</p><p><code>Tube</code>s are coroutines which can suspend computation to yield an
-intermediate value or continue execution by requesting an upstream value.</p><p>Examples and more information may be found at
-<a href="https://github.com/gatlin/tubes">https://github.com/gatlin/tubes</a>.</p></div></div><div id="module-list"><p class="caption">Modules</p><ul><li><span class="module"><span id="control.n.1" class="collapser" onclick="toggleSection('n.1')">&nbsp;</span><a href="Tubes.html">Tubes</a></span> All-encompassing module.<ul id="section.n.1" class="show"><li><span class="module"><a href="Tubes-Core.html">Tubes.Core</a></span></li><li><span class="module"><a href="Tubes-Pump.html">Tubes.Pump</a></span></li><li><span class="module"><a href="Tubes-Util.html">Tubes.Util</a></span></li></ul></li></ul></div></div><div id="footer"><p>Produced by <a href="http://www.haskell.org/haddock/">Haddock</a> version 2.16.0</p></div></body></html>
+<code>b</code>.</p><p>Specialized <code>Tube</code>s exist which allow for stream branching, merging, and
+other non-linear control. These are <code>Source</code>, <code>Sink</code>, and <code>Channel</code>.</p><p>Also provided are <code>Pump</code>s, the comonadic dual to <code>Tube</code>s. Examples are
+provided of how they can be used with <code>Tube</code>s but we have almost certainly
+only scratched the surface.</p><p>Examples and more information may be found at
+<a href="https://github.com/gatlin/tubes">https://github.com/gatlin/tubes</a>.</p><p>I seem to have trouble uploading packages where the documentation can be
+built correctly on Hackage. If I have (once again) messed this up, you can
+find Haddock documentation at <a href="https://niltag.net/tubes">https://niltag.net/tubes</a>. I apologize for
+any inconvenience!</p><p>This should compile on GHC 7.8, but the problem
+is that previous attempts at setting the versions properly rendered Hackage
+unable to generate documentation. Hopefully I have this fixed but any
+advice is welcome.</p></div></div><div id="module-list"><p class="caption">Modules</p><ul><li><span class="module"><span id="control.n.1" class="collapser" onclick="toggleSection('n.1')">&nbsp;</span><a href="Tubes.html">Tubes</a></span> All-encompassing module.<ul id="section.n.1" class="show"><li><span class="module"><a href="Tubes-Channel.html">Tubes.Channel</a></span></li><li><span class="module"><a href="Tubes-Core.html">Tubes.Core</a></span></li><li><span class="module"><a href="Tubes-Sink.html">Tubes.Sink</a></span></li><li><span class="module"><a href="Tubes-Source.html">Tubes.Source</a></span></li><li><span class="module"><a href="Tubes-Util.html">Tubes.Util</a></span></li></ul></li></ul></div></div><div id="footer"><p>Produced by <a href="http://www.haskell.org/haddock/">Haddock</a> version 2.16.1</p></div></body></html>
