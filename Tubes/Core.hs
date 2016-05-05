@@ -62,12 +62,12 @@ import Data.Functor.Identity
 This type is merely the CPS-encoded version of the following much friendlier
 data type:
 
-    @
-        data TubeF a b k
-            = Await (a -> k)
-            | Yield (b  , k)
-            deriving (Functor)
-    @
+@
+    data TubeF a b k
+        = Await (a -> k)
+        | Yield (b  , k)
+        deriving (Functor)
+@
 
 This says: a tube computation is either paused awaiting upstream data, or
 paused yielding data downstream. The free monad transformer fleshes out the
