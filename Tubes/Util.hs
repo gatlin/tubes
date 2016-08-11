@@ -38,7 +38,6 @@ import Data.Foldable
 import Data.Monoid (Monoid, mappend, mempty)
 import System.IO
 import Data.Functor.Identity
-
 import Tubes.Core
 
 -- * Tube utilities
@@ -56,6 +55,8 @@ for src body = liftT src >>= go where
         (\(v,k) -> do
             body v
             liftT k >>= go)
+{-# RULES "for t yield" forall t. for t yield = t #-}
+        
 -- | A default tube to end a series when no further processing is required.
 stop :: Monad m => Tube a () m r
 stop = map (const ())
@@ -65,6 +66,11 @@ cat :: Monad m => Tube a a m r
 cat = forever $ do
     x <- await
     yield x
+
+{-# RULES
+    "cat >< t" forall t. cat >< t = t
+  ; "t >< cat" forall t. t >< cat = t
+  #-}
 
 each :: (Monad m, Foldable t) => t b -> Tube () b m ()
 each as = Data.Foldable.mapM_ yield as
@@ -76,11 +82,18 @@ every xs = ((each xs) >< map Just) >> yield Nothing
 map :: (Monad m) => (a -> b) -> Tube a b m r
 map f = for cat (\x -> yield (f x))
 
+{-# RULES
+    "t >< map f" forall t f . t >< map f = for t (\y -> yield (f y))
+  ; "map f >< t" forall t f . map f >< t = (do
+        a <- await
+        return (f a) ) >< t
+  #-}
+
 -- | Refuses to yield the first @n@ values it receives.
 drop :: Monad m => Int -> Tube a a m r
-drop n = do
-    replicateM_ n await
-    cat
+drop 0 = cat
+drop n = await >> Tubes.Util.drop (n-1)
+{-# INLINABLE Tubes.Util.drop #-}
 
 -- | Yields only values satisfying some predicate.
 filter :: Monad m => (a -> Bool) -> Tube a a m r
@@ -100,10 +113,11 @@ takeWhile pred = go
 
 -- | Relay only the first @n@ elements of a stream.
 take :: Monad m => Int -> Tube a a m ()
+take 0 = return ()
 take n = do
-    replicateM_ n $ do
-        x <- await
-        yield x
+  await >>= yield
+  Tubes.Util.take (n-1)
+{-# INLINABLE Tubes.Util.take #-}
 
 -- | Taps the next value from a source, maybe.
 unyield

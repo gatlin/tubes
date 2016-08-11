@@ -146,7 +146,7 @@ a >< b = liftT b >>= go where
     go (Pure x) = return x
     go (Free b') = runTubeF b' (\f -> a >- f)
                                (\(v,k) -> wrap $ yieldF v $ liftT k >>= go)
-
+{-# NOINLINE (><) #-}
 infixl 3 ><
 
 -- * Pumps
@@ -268,4 +268,3 @@ fix f = let x = f x in x
 -- get rid of this.
 diverge :: a
 diverge = fix id
-
