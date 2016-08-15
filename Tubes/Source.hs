@@ -9,6 +9,8 @@ Stability       : experimental
 -}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE DeriveFoldable #-}
+{-# LANGUAGE DeriveTraversable #-}
 
 module Tubes.Source
 (
@@ -25,12 +27,15 @@ import Control.Monad.IO.Class
 import Control.Monad.Trans (MonadTrans(..), lift)
 import Control.Monad.Trans.Free
 import Control.Monad (MonadPlus(..))
-import Control.Applicative (Applicative(..), Alternative(..))
+import Control.Applicative (Applicative(..), Alternative(..), liftA2)
 import Data.Semigroup
 
 import System.IO
 
+import Data.Foldable (Foldable(..))
 import qualified Data.Foldable as F
+import Data.Traversable (Traversable(..))
+import qualified Data.Traversable as T
 
 import Tubes.Core
 import Tubes.Util
@@ -114,6 +119,42 @@ instance (Monad m) => Monoid (Source m a) where
 
 instance (Monad m) => Semigroup (Source m a) where
     (<>) = (<|>)
+
+instance (Monad m, Num a) => Num (Source m a) where
+    fromInteger n = pure $ fromInteger n
+    negate = fmap negate
+    abs = fmap abs
+    signum = fmap signum
+
+    (+) = liftA2 (+)
+    (*) = liftA2 (*)
+    (-) = liftA2 (-)
+
+instance (Monad m, Fractional a) => Fractional (Source m a) where
+    fromRational n = pure $ fromRational n
+    recip = fmap recip
+    (/) = liftA2 (/)
+
+instance (Monad m, Floating a) => Floating (Source m a) where
+    pi = pure pi
+    exp = fmap exp
+    sqrt = fmap sqrt
+    log = fmap log
+    sin = fmap sin
+    tan = fmap tan
+    cos = fmap cos
+    asin = fmap asin
+    acos = fmap acos
+    atan = fmap atan
+    sinh = fmap sinh
+    cosh = fmap cosh
+    tanh = fmap tanh
+    asinh = fmap asinh
+    acosh = fmap acosh
+    atanh = fmap atanh
+
+    (**) = liftA2 (**)
+    logBase = liftA2 logBase
 
 {- |
 Strict left-fold of a 'Source', using a 'Pump' internally.
