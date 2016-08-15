@@ -55,8 +55,9 @@ for src body = liftT src >>= go where
         (\(v,k) -> do
             body v
             liftT k >>= go)
+
 {-# RULES "for t yield" forall t. for t yield = t #-}
-        
+
 -- | A default tube to end a series when no further processing is required.
 stop :: Monad m => Tube a () m r
 stop = map (const ())
@@ -178,4 +179,3 @@ lfold
 lfold step done init = pumpT (Identity init)
     (\(Identity xs) x -> Identity (step xs x))
     (\(Identity xs)   -> Identity <$> done xs)
-

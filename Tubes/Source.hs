@@ -89,20 +89,12 @@ instance (Monad m) => Monad (Source m) where
 instance Monad m => Alternative (Source m) where
     empty = Source $ return ()
 
-    -- This is hideous
-    s1 <|> s2 = Source $ loop (sample s1) (sample s2) where
+    (Source s1) <|> (Source s2) = Source $ loop s1 s2 where
         loop s1 s2 = do
-            mR1 <- lift $ unyield s1
-            case mR1 of
+            k <- lift $  unyield s1
+            case k of
                 Nothing -> s2
-                Just (v1,s1') -> do
-                    yield v1
-                    mR2 <- lift $ unyield s2
-                    case mR2 of
-                        Nothing -> s1'
-                        Just (v2, s2') -> do
-                            yield v2
-                            loop s1' s2'
+                Just (v, sk) -> yield v >> loop sk s2
 
 instance MonadTrans Source where
     lift m = Source $ do
