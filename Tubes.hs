@@ -88,7 +88,7 @@ Code is worth a thousand words. This program ...
     import qualified Prelude as P
 
     import Data.Semigroup
-    import Control.Monad (forevGer)
+    import Control.Monad (forever)
 
     import Tubes
 
@@ -100,7 +100,7 @@ Code is worth a thousand words. This program ...
 
     -- Synchronously merge input
     srcAB :: MonadIO m => Source m String
-    srcAB = srcA <> srcB
+    srcAB = srcA `merge` srcB
 
     writeToFile :: MonadIO m => Sink m String
     writeToFile = Sink $ do

@@ -40,10 +40,9 @@ An exhaustible source of values parameterized over a base monad. It never
 'await's, it only 'yield's.
 
 'Source's are monad transformers in their own right, as they are possibly
-finite. They may also be synchronously merged as monoids:
+finite. They may also be synchronously merged:
 
 @
-    import Data.Semigroup (<>)
 
     src1 :: Source IO String
     src1 = Source $ each ["line A1", "line A2", "line A3"]
@@ -52,10 +51,10 @@ finite. They may also be synchronously merged as monoids:
     src2 = Source $ each ["line B1", "line B2", "line B3", "line B4"]
 
     src3 :: Source IO String
-    src3 = src1 <> src2
+    src3 = src1 `merge` src2
 
     main :: IO ()
-    main = runTube $ sample (src1 <> src2) >< pour display
+    main = runTube $ sample src3 >< pour display
     -- line A1
     -- line B1
     -- line A2
@@ -114,7 +113,7 @@ instance (Monad m) => Monoid (Source m a) where
     mappend = (<|>)
 
 instance (Monad m) => Semigroup (Source m a) where
-    (<>) = merge
+    (<>) = (<|>)
 
 {- |
 Strict left-fold of a 'Source', using a 'Pump' internally.
@@ -130,7 +129,6 @@ reduce step begin src = stream const f src where
 
 {- |
 Interleave the values of two 'Source's until both are exhausted.
-This is also the implementation for the 'Semigroup' instance.
 -}
 merge :: Monad m => Source m a -> Source m a -> Source m a
 merge (Source s1) (Source s2) = Source $ loop s1 s2 where
