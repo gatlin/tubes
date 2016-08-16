@@ -70,6 +70,11 @@ finite. They may also be synchronously merged:
 @
 
 If one source runs out, the other will continue until completion.
+
+Digression: originally 'merge' was the implementation for 'mappend' and '(<>)'.
+However because 'Source' is ultimately a list transformer I thought it better
+that these instances preserve the behavior found in lists and instead provide a
+separate function for synchronous merging.
 -}
 newtype Source m a = Source {
     sample :: Tube () a m ()
@@ -96,7 +101,7 @@ instance Monad m => Alternative (Source m) where
 
     (Source s1) <|> (Source s2) = Source $ loop s1 s2 where
         loop s1 s2 = do
-            k <- lift $  unyield s1
+            k <- lift $ unyield s1
             case k of
                 Nothing -> s2
                 Just (v, sk) -> yield v >> loop sk s2
@@ -171,13 +176,14 @@ reduce step begin src = stream const f src where
 {- |
 Interleave the values of two 'Source's until both are exhausted.
 -}
+    -- This is hideous
 merge :: Monad m => Source m a -> Source m a -> Source m a
-merge (Source s1) (Source s2) = Source $ loop s1 s2 where
+s1 `merge` s2 = Source $ loop (sample s1) (sample s2) where
     loop s1 s2 = do
         mR1 <- lift $ unyield s1
         case mR1 of
             Nothing -> s2
-            Just (v1, s1') -> do
+            Just (v1,s1') -> do
                 yield v1
                 mR2 <- lift $ unyield s2
                 case mR2 of
