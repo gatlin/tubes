@@ -77,6 +77,30 @@ import Control.Monad.IO.Class
 import Control.Monad (unless, forever)
 
 {- $tubeintro
+A 'Tube' is a computation which may 'await' values from an upstream source,
+'yield' values to a downstream receiver, or both. 'Tube's may be composed in
+series to build complex stream processors using the '(><)' operator.
+
+'Tube's are also monad transformers so you can add stream processing
+capabilities to any base monad.
+
+There are three varieties of 'Tube's which have different properties:
+'Source's, 'Sink's, and 'Channel's. They each restrict the 'Tube' type in
+different ways to guarantee correctness while still allowing them to be
+composed. More information is provided with their respective definitions.
+
+The dual to 'Tube' is 'Pump'. It is a comonad which endows another base comonad
+with the ability to 'send' and 'recv' values.
+
+Several useful 'Tube' functions - like 'runTube', 'reduce', and 'stream' - are
+implemented in terms of 'Pump'. Beyond simply evaluating 'Tube's they have
+other uses. The 'lfold' function, for instance, constructs a resumable left fold
+structure.
+
+This library is inspired in large part by 'pipes', 'conduit', and others. While
+it intends to be efficient and useful in its own right it began as an exercise
+in implementing the basics of those other libraries with comonads and dualities
+in mind.
 -}
 
 {- $tubeexample
