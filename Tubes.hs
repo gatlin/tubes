@@ -27,6 +27,7 @@ module Tubes
 -- * Sources
 , Source(..)
 , reduce
+, merge
 -- * Sinks
 , Sink(..)
 -- * Channels
