@@ -1,0 +1,66 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8" /><title>Tubes.Channel</title><link href="ocean.css" rel="stylesheet" type="text/css" title="Ocean" /><script src="haddock-util.js" type="text/javascript"></script><script type="text/javascript">//<![CDATA[
+window.onload = function () {pageLoad();setSynopsis("mini_Tubes-Channel.html");};
+//]]>
+</script></head><body><div id="package-header"><ul class="links" id="page-menu"><li><a href="src/Tubes-Channel.html">Source</a></li><li><a href="/package/tubes-2.1.0.0">Contents</a></li><li><a href="doc-index.html">Index</a></li></ul><p class="caption">tubes-2.1.0.0: Write stream processing computations with side effects in a series of
+tubes.</p></div><div id="content"><div id="module-header"><table class="info"><tr><th>Safe Haskell</th><td>Trustworthy</td></tr><tr><th>Language</th><td>Haskell2010</td></tr></table><p class="caption">Tubes.Channel</p></div><div id="synopsis"><p id="control.syn" class="caption expander" onclick="toggleSection('syn')">Synopsis</p><ul id="section.syn" class="hide" onclick="toggleSection('syn')"><li class="src short"><span class="keyword">newtype</span> <a href="#t:Channel">Channel</a> m a b = <a href="#v:Channel">Channel</a> {<ul class="subs"><li><a href="#v:tune">tune</a> :: <a href="Tubes-Core.html#t:Tube">Tube</a> a b m ()</li></ul>}</li><li class="src short"><a href="#v:tee">tee</a> :: Monad m =&gt; <a href="Tubes-Sink.html#t:Sink">Sink</a> m a -&gt; <a href="Tubes-Channel.html#t:Channel">Channel</a> m a a</li></ul></div><div id="interface"><h1>Documentation</h1><div class="top"><p class="src"><span class="keyword">newtype</span> <a name="t:Channel" class="def">Channel</a> m a b <a href="src/Tubes-Channel.html#Channel" class="link">Source</a></p><div class="doc"><p>A <code>Channel m a b</code> is a stream processor which converts values of type <code>a</code> into
+values of type <code>b</code>, while also performing side-effects in some monad <code>m</code>.</p><p>If a <code>Channel</code> <code><a href="Tubes-Core.html#v:yield">yield</a></code>s exactly once after each time it <code><a href="Tubes-Core.html#v:await">await</a></code>s then it may be
+safely treated as an <code>Arrow</code>. For example:</p><pre>    {-# LANGUAGE Arrows #-}
+
+    import Tubes
+    import Control.Arrow
+    import Prelude hiding (map)
+
+    -- A simple channel which accumulates a total
+    total :: (Num a, Monad m) =&gt; Channel m a a
+    total = Channel $ loop 0 where
+        loop acc = do
+            n &lt;- await
+            let acc' = n + acc
+            yield acc'
+            loop acc'
+
+    -- A running average using two totals in parallel
+    avg :: (Fractional a, Monad m) =&gt; Channel m a a
+    avg = proc value -&gt; do
+        t &lt;- total -&lt; value
+        n &lt;- total -&lt; 1
+        returnA -&lt; t / n
+
+    main :: IO ()
+    main = runTube $ each [0,10,7,8]
+                  &gt;&lt; tune avg
+                  &gt;&lt; map show
+                  &gt;&lt; pour display
+
+</pre><p>This program would output</p><pre>    0.0
+    5.0
+    5.666666666666667
+    6.25
+</pre><p>This has interesting potential in FRP applications.</p></div><div class="subs constructors"><p class="caption">Constructors</p><table><tr><td class="src"><a name="v:Channel" class="def">Channel</a></td><td class="doc empty">&nbsp;</td></tr><tr><td colspan="2"><div class="subs fields"><p class="caption">Fields</p><dl><dt class="src"><a name="v:tune" class="def">tune</a> :: <a href="Tubes-Core.html#t:Tube">Tube</a> a b m ()</dt><dd class="doc empty">&nbsp;</dd></dl><div class="clear"></div></div></td></tr></table></div><div class="subs instances"><p id="control.i:Channel" class="caption collapser" onclick="toggleSection('i:Channel')">Instances</p><div id="section.i:Channel" class="show"><table><tr><td class="src clearfix"><span class="inst-left">Monad m =&gt; Category * (<a href="Tubes-Channel.html#t:Channel">Channel</a> m)</span> <a href="src/Tubes-Channel.html#line-90" class="link">Source</a></td><td class="doc empty">&nbsp;</td></tr><tr><td class="src clearfix"><span class="inst-left">Monad m =&gt; Arrow (<a href="Tubes-Channel.html#t:Channel">Channel</a> m)</span> <a href="src/Tubes-Channel.html#line-94" class="link">Source</a></td><td class="doc empty">&nbsp;</td></tr><tr><td class="src clearfix"><span class="inst-left">Monad m =&gt; Profunctor (<a href="Tubes-Channel.html#t:Channel">Channel</a> m)</span> <a href="src/Tubes-Channel.html#line-86" class="link">Source</a></td><td class="doc empty">&nbsp;</td></tr></table></div></div></div><div class="top"><p class="src"><a name="v:tee" class="def">tee</a> :: Monad m =&gt; <a href="Tubes-Sink.html#t:Sink">Sink</a> m a -&gt; <a href="Tubes-Channel.html#t:Channel">Channel</a> m a a <a href="src/Tubes-Channel.html#tee" class="link">Source</a></p><div class="doc"><p>Convert a 'Sink m a' into a 'Channel m a a', re-forwarding values downstream.</p><p>Useful example:</p><pre>    import Data.Semigroup
+
+    writeToFile :: Sink IO String
+    writeToFile = Sink $ do
+        line &lt;- await
+        liftIO . putStrLn $ &quot;Totally writing this to a file: &quot; ++ line
+
+    writeToConsole :: Sink IO String
+    writeToConsole = Sink $ do
+        line &lt;- await
+        liftIO . putStrLn $ &quot;Console out: &quot; ++ line
+
+    writeOut :: Channel IO String String
+    writeOut = tee $ writeToFile &lt;&gt; writeToConsole
+
+    main :: IO ()
+    main = runTube $ each [&quot;a&quot;,&quot;b&quot;,&quot;c&quot;] &gt;&lt; forever (tune writeOut) &gt;&lt; pour display
+    --  Totally writing this to a file: a
+    --  Console out: a
+    --  a
+    --  Totally writing this to a file: b
+    --  Console out: b
+    --  b
+    --  Totally writing this to a file: c
+    --  Console out: c
+    --  c
+</pre><p>This takes advantage of the divisible nature of <code><a href="Tubes-Sink.html#t:Sink">Sink</a></code>s to merge effectful
+computations and then continue the process.</p></div></div></div></div><div id="footer"><p>Produced by <a href="http://www.haskell.org/haddock/">Haddock</a> version 2.16.1</p></div></body></html>
