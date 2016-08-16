@@ -156,7 +156,7 @@ tee
     :: Monad m
     => Sink m a
     -> Channel m a a
-tee (Sink tube) = Channel $ do
+tee (Sink tube) = Channel $ forever $ do
     a <- await
     liftT $ yield a >< tube
     yield a
